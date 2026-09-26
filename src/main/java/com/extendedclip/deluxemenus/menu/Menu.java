@@ -294,7 +294,9 @@ public class Menu {
             return;
         }
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+        // View requirements may invoke PlaceholderAPI expansions that access Bukkit/plugin player state.
+        // Evaluate them on the primary server thread so the current menu viewer is a safe, valid context.
+        Bukkit.getScheduler().runTask(plugin, () -> {
 
             Set<MenuItem> activeItems = new HashSet<>();
 
