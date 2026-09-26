@@ -138,7 +138,9 @@ public class MenuHolder implements InventoryHolder {
 
         setUpdating(true);
 
-        Bukkit.getScheduler().runTaskAsynchronously(this.plugin, () -> {
+        // View requirements can resolve PlaceholderAPI values against the current viewer.
+        // Keep evaluation on the primary thread because expansions may read Bukkit/plugin player state.
+        Bukkit.getScheduler().runTask(this.plugin, () -> {
 
             final Set<MenuItem> active = new HashSet<>();
 
@@ -246,7 +248,7 @@ public class MenuHolder implements InventoryHolder {
             public void run() {
                 refreshMenu();
             }
-        }.runTaskTimerAsynchronously(plugin, 20L,
+        }.runTaskTimer(plugin, 20L,
                 20L * Menu.getMenuByName(menuName)
                         .map(Menu::options)
                         .map(MenuOptions::refreshInterval)
