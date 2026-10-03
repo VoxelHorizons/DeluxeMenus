@@ -118,6 +118,13 @@ public class MenuHolder implements InventoryHolder {
         this.playerInventorySnapshot = null;
     }
 
+    public void resetPlayerInventorySlots() {
+        if (this.playerInventorySnapshot == null) {
+            return;
+        }
+        plugin.getPlayerInventoryUiStore().restore(viewer, this.playerInventorySnapshot);
+    }
+
     private ItemStack getDisplayedItem(MenuItem item) {
         if (item.options().playerSlot().isPresent()) {
             return viewer.getInventory().getItem(item.options().playerSlot().get());
@@ -228,11 +235,13 @@ public class MenuHolder implements InventoryHolder {
 
             if (active.isEmpty()) {
                 Menu.closeMenu(plugin, getViewer(), true);
+                return;
             }
 
             Bukkit.getScheduler().runTask(plugin, () -> {
 
                 boolean update = false;
+                resetPlayerInventorySlots();
 
                 for (MenuItem item : active) {
 
@@ -372,7 +381,7 @@ public class MenuHolder implements InventoryHolder {
                 }
             }
 
-        }.runTaskTimerAsynchronously(plugin, 20L,
+        }.runTaskTimer(plugin, 20L,
                 20L * Menu.getMenuByName(menuName)
                         .map(Menu::options)
                         .map(MenuOptions::updateInterval)
