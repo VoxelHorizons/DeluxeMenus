@@ -40,3 +40,26 @@ If you would like to contribute towards DeluxeMenus should you take a look at ou
 - [Spigot Page][spigot]
 - [Plugin Statistics][bstats]
 
+
+
+## Player inventory UI slots
+
+This fork supports rendering a menu item in the player's visible inventory area while a DeluxeMenus menu is open.
+
+```yaml
+items:
+  help:
+    material: PAPER
+    item_model: voxel:ui/help
+    slot: 53
+    player_slot: 8
+    display_name: '&eHelp'
+    lore:
+      - '&7Click for help.'
+    left_click_commands:
+      - '[player] help'
+```
+
+`slot` remains the DeluxeMenus logical slot used for priorities/view requirements. When `player_slot` is present, the item is rendered in that player inventory slot instead of the top menu inventory. Valid player slots are `0-35`: hotbar `0-8`, then the main player inventory `9-35`.
+
+Before any configured player slot is changed, DeluxeMenus persists the original contents to `plugins/DeluxeMenus/player-slot-recovery/`. The original slots are restored when the menu closes, changes to another DeluxeMenus menu, the player disconnects, or the plugin shuts down. Recovery files are also restored after an interrupted server session before another player-slot UI is used.
