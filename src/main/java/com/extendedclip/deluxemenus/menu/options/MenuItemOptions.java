@@ -65,6 +65,7 @@ public class MenuItemOptions {
     private final List<String> nbtInts;
 
     private final int slot;
+    private final Integer playerSlot;
     private final int priority;
     private final boolean updatePlaceholders;
 
@@ -121,6 +122,7 @@ public class MenuItemOptions {
         this.nbtShorts = builder.nbtShorts;
         this.nbtInts = builder.nbtInts;
         this.slot = builder.slot;
+        this.playerSlot = builder.playerSlot;
         this.priority = builder.priority;
         this.updatePlaceholders = builder.updatePlaceholders;
         this.clickHandler = builder.clickHandler;
@@ -294,6 +296,10 @@ public class MenuItemOptions {
         return slot;
     }
 
+    public @NotNull Optional<Integer> playerSlot() {
+        return Optional.ofNullable(playerSlot);
+    }
+
     public int priority() {
         return priority;
     }
@@ -391,6 +397,7 @@ public class MenuItemOptions {
                 .nbtShorts(this.nbtShorts)
                 .nbtInts(this.nbtInts)
                 .slot(this.slot)
+                .playerSlot(this.playerSlot)
                 .priority(this.priority)
                 .updatePlaceholders(this.updatePlaceholders)
                 .clickHandler(this.clickHandler)
@@ -454,6 +461,7 @@ public class MenuItemOptions {
         private List<String> nbtInts = Collections.emptyList();
 
         private int slot;
+        private Integer playerSlot;
         private int priority;
         private boolean updatePlaceholders;
 
@@ -674,6 +682,11 @@ public class MenuItemOptions {
 
         public MenuItemOptionsBuilder slot(final int slot) {
             this.slot = slot;
+            return this;
+        }
+
+        public MenuItemOptionsBuilder playerSlot(final @Nullable Integer playerSlot) {
+            this.playerSlot = playerSlot;
             return this;
         }
 
