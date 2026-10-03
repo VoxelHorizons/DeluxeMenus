@@ -32,6 +32,7 @@ public class MenuHolder implements InventoryHolder {
     private BukkitTask updateTask = null;
     private BukkitTask refreshTask = null;
     private Inventory inventory;
+    private PlayerInventoryUiStore.Snapshot playerInventorySnapshot;
     private boolean updating;
     private boolean parsePlaceholdersInArguments;
     private boolean parsePlaceholdersAfterArguments;
@@ -85,11 +86,58 @@ public class MenuHolder implements InventoryHolder {
 
     public MenuItem getItem(int slot) {
         for (MenuItem item : activeItems) {
-            if (item.options().slot() == slot) {
+            if (item.options().playerSlot().isEmpty() && item.options().slot() == slot) {
                 return item;
             }
         }
         return null;
+    }
+
+    public MenuItem getPlayerItem(int slot) {
+        for (MenuItem item : activeItems) {
+            if (item.options().playerSlot().isPresent() && item.options().playerSlot().get() == slot) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    public void setPlayerInventorySnapshot(PlayerInventoryUiStore.Snapshot snapshot) {
+        this.playerInventorySnapshot = snapshot;
+    }
+
+    public PlayerInventoryUiStore.Snapshot getPlayerInventorySnapshot() {
+        return this.playerInventorySnapshot;
+    }
+
+    public void restorePlayerInventorySlots() {
+        if (this.playerInventorySnapshot == null) {
+            return;
+        }
+        plugin.getPlayerInventoryUiStore().restoreAndDelete(viewer, this.playerInventorySnapshot);
+        this.playerInventorySnapshot = null;
+    }
+
+    public void resetPlayerInventorySlots() {
+        if (this.playerInventorySnapshot == null) {
+            return;
+        }
+        plugin.getPlayerInventoryUiStore().restore(viewer, this.playerInventorySnapshot);
+    }
+
+    private ItemStack getDisplayedItem(MenuItem item) {
+        if (item.options().playerSlot().isPresent()) {
+            return viewer.getInventory().getItem(item.options().playerSlot().get());
+        }
+        return inventory.getItem(item.options().slot());
+    }
+
+    private void setDisplayedItem(MenuItem item, ItemStack stack) {
+        if (item.options().playerSlot().isPresent()) {
+            viewer.getInventory().setItem(item.options().playerSlot().get(), stack);
+        } else {
+            inventory.setItem(item.options().slot(), stack);
+        }
     }
 
     public Optional<Menu> getMenu() {
@@ -171,16 +219,29 @@ public class MenuHolder implements InventoryHolder {
 
                 if (!m) {
                     getInventory().setItem(i, null);
+                } else {
+                    MenuItem selected = null;
+                    for (MenuItem candidate : active) {
+                        if (candidate.options().slot() == i) {
+                            selected = candidate;
+                            break;
+                        }
+                    }
+                    if (selected != null && selected.options().playerSlot().isPresent()) {
+                        getInventory().setItem(i, null);
+                    }
                 }
             }
 
             if (active.isEmpty()) {
                 Menu.closeMenu(plugin, getViewer(), true);
+                return;
             }
 
             Bukkit.getScheduler().runTask(plugin, () -> {
 
                 boolean update = false;
+                resetPlayerInventorySlots();
 
                 for (MenuItem item : active) {
 
@@ -194,7 +255,7 @@ public class MenuHolder implements InventoryHolder {
 
                     int slot = item.options().slot();
 
-                    if (slot >= menu.options().size()) {
+                    if (item.options().playerSlot().isEmpty() && slot >= menu.options().size()) {
                         continue;
                     }
 
@@ -202,7 +263,7 @@ public class MenuHolder implements InventoryHolder {
                         update = true;
                     }
 
-                    getInventory().setItem(item.options().slot(), iStack);
+                    setDisplayedItem(item, iStack);
                 }
 
                 setActiveItems(active);
@@ -280,7 +341,7 @@ public class MenuHolder implements InventoryHolder {
 
                     if (item.options().updatePlaceholders()) {
 
-                        ItemStack i = inventory.getItem(item.options().slot());
+                        ItemStack i = getDisplayedItem(item);
 
                         if (i == null) {
                             continue;
@@ -315,11 +376,12 @@ public class MenuHolder implements InventoryHolder {
 
                         i.setItemMeta(meta);
                         i.setAmount(amt);
+                        setDisplayedItem(item, i);
                     }
                 }
             }
 
-        }.runTaskTimerAsynchronously(plugin, 20L,
+        }.runTaskTimer(plugin, 20L,
                 20L * Menu.getMenuByName(menuName)
                         .map(Menu::options)
                         .map(MenuOptions::updateInterval)

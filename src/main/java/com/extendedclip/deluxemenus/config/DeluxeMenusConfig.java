@@ -610,6 +610,20 @@ public class DeluxeMenusConfig {
 
             checkForDeprecatedItemOptions(c.getConfigurationSection(currentPath), name);
 
+            Integer playerSlot = null;
+            if (c.contains(currentPath + "player_slot")) {
+                playerSlot = c.getInt(currentPath + "player_slot");
+                if (playerSlot < 0 || playerSlot > 35) {
+                    plugin.debug(
+                            DebugLevel.HIGHEST,
+                            Level.WARNING,
+                            "player_slot for item: " + key + " in menu: " + name + " must be between 0 and 35!",
+                            "Skipping item: " + key
+                    );
+                    continue;
+                }
+            }
+
             MenuItemOptions.MenuItemOptionsBuilder builder = MenuItemOptions.builder()
                     .material(material)
                     .baseColor(Optional.ofNullable(c.getString(currentPath + "base_color"))
@@ -617,6 +631,7 @@ public class DeluxeMenusConfig {
                             .map(DyeColor::valueOf)
                             .orElse(null))
                     .slot(c.getInt(currentPath + "slot", 0))
+                    .playerSlot(playerSlot)
                     .amount(c.getInt(currentPath + "amount", -1))
                     .dynamicAmount(c.getString(currentPath + "dynamic_amount", null))
                     .customModelData(c.getString(currentPath + "model_data", null))

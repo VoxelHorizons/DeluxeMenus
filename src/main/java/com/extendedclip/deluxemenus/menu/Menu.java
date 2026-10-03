@@ -193,6 +193,7 @@ public class Menu {
 
         holder.stopPlaceholderUpdate();
         holder.stopRefreshTask();
+        holder.restorePlayerInventorySlots();
 
         if (executeCloseActions) {
             holder.getMenu().map(Menu::options).map(MenuOptions::closeHandler).flatMap(h -> h).ifPresent(h -> h.onClick(holder));
@@ -209,7 +210,11 @@ public class Menu {
     }
 
     public static void closeMenuForShutdown(final @NotNull DeluxeMenus plugin, final @NotNull Player player) {
-        getMenuHolder(player).ifPresent(MenuHolder::stopPlaceholderUpdate);
+        getMenuHolder(player).ifPresent(holder -> {
+            holder.stopPlaceholderUpdate();
+            holder.stopRefreshTask();
+            holder.restorePlayerInventorySlots();
+        });
 
         player.closeInventory();
         cleanInventory(plugin, player);
@@ -298,6 +303,10 @@ public class Menu {
         // Evaluate them on the primary server thread so the current menu viewer is a safe, valid context.
         Bukkit.getScheduler().runTask(plugin, () -> {
 
+            if (isInMenu(viewer)) {
+                closeMenu(plugin, viewer, false);
+            }
+
             Set<MenuItem> activeItems = new HashSet<>();
 
             for (Entry<Integer, TreeMap<Integer, MenuItem>> entry : items.entrySet()) {
@@ -306,7 +315,7 @@ public class Menu {
 
                     int slot = item.options().slot();
 
-                    if (slot >= this.options.size()) {
+                    if (item.options().playerSlot().isEmpty() && slot >= this.options.size()) {
                         plugin.debug(
                                 DebugLevel.HIGHEST,
                                 Level.WARNING,
@@ -338,6 +347,29 @@ public class Menu {
             holder.setMenuName(this.options.name());
             holder.setActiveItems(activeItems);
 
+            final Set<Integer> playerSlots = new LinkedHashSet<>();
+            for (TreeMap<Integer, MenuItem> priorityItems : items.values()) {
+                for (MenuItem configuredItem : priorityItems.values()) {
+                    configuredItem.options().playerSlot().ifPresent(playerSlots::add);
+                }
+            }
+
+            if (!playerSlots.isEmpty()) {
+                plugin.getPlayerInventoryUiStore().restoreIfPresent(viewer);
+                try {
+                    holder.setPlayerInventorySnapshot(
+                            plugin.getPlayerInventoryUiStore().capture(viewer, playerSlots)
+                    );
+                } catch (java.io.IOException exception) {
+                    plugin.printStacktrace(
+                            "Could not save player inventory slots before opening menu " + this.options.name()
+                                    + " for " + viewer.getName() + ". The menu will not be opened.",
+                            exception
+                    );
+                    return;
+                }
+            }
+
             this.options.openHandler().ifPresent(h -> h.onClick(holder));
 
             String title = StringUtils.color(holder.setPlaceholdersAndArguments(this.options.title()));
@@ -366,7 +398,7 @@ public class Menu {
 
                 int slot = item.options().slot();
 
-                if (slot >= this.options.size()) {
+                if (item.options().playerSlot().isEmpty() && slot >= this.options.size()) {
                     plugin.debug(
                             DebugLevel.HIGHEST,
                             Level.WARNING,
@@ -380,7 +412,11 @@ public class Menu {
                     update = true;
                 }
 
-                inventory.setItem(item.options().slot(), iStack);
+                if (item.options().playerSlot().isPresent()) {
+                    viewer.getInventory().setItem(item.options().playerSlot().get(), iStack);
+                } else {
+                    inventory.setItem(item.options().slot(), iStack);
+                }
             }
 
             final boolean updatePlaceholders = update;
@@ -388,10 +424,6 @@ public class Menu {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if(options.refresh()) {
                     holder.startRefreshTask();
-                }
-
-                if (isInMenu(holder.getViewer())) {
-                    closeMenu(plugin, holder.getViewer(), false);
                 }
 
                 viewer.openInventory(inventory);

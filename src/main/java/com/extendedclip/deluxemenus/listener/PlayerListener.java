@@ -17,6 +17,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.NotNull;
 
@@ -54,6 +55,11 @@ public class PlayerListener extends Listener {
         Player player = event.getPlayer();
         menu.openMenu(player);
         event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        plugin.getPlayerInventoryUiStore().restoreIfPresent(event.getPlayer());
     }
 
     @EventHandler
@@ -128,9 +134,12 @@ public class PlayerListener extends Listener {
 
         event.setCancelled(true);
 
-        int slot = event.getRawSlot();
-
-        MenuItem item = holder.getItem(slot);
+        final MenuItem item;
+        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
+            item = holder.getPlayerItem(event.getSlot());
+        } else {
+            item = holder.getItem(event.getRawSlot());
+        }
 
         if (item == null) {
             return;
