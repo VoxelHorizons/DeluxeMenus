@@ -11,6 +11,7 @@ import com.extendedclip.deluxemenus.hooks.*;
 import com.extendedclip.deluxemenus.listener.PlayerListener;
 import com.extendedclip.deluxemenus.menu.Menu;
 import com.extendedclip.deluxemenus.menu.MenuItem;
+import com.extendedclip.deluxemenus.menu.PlayerInventoryUiStore;
 import com.extendedclip.deluxemenus.menu.options.HeadType;
 import com.extendedclip.deluxemenus.menu.options.MenuOptions;
 import com.extendedclip.deluxemenus.nbt.NbtProvider;
@@ -50,6 +51,7 @@ public class DeluxeMenus extends JavaPlugin {
     private PersistentMetaHandler persistentMetaHandler;
     private MenuItemMarker menuItemMarker;
     private EphemeralCooldownManager ephemeralCooldownManager;
+    private PlayerInventoryUiStore playerInventoryUiStore;
 
     private BukkitAudiences audiences;
 
@@ -86,6 +88,10 @@ public class DeluxeMenus extends JavaPlugin {
 
         this.persistentMetaHandler = new PersistentMetaHandler(this);
         this.menuItemMarker = new MenuItemMarker(this);
+        this.playerInventoryUiStore = new PlayerInventoryUiStore(this);
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            this.playerInventoryUiStore.restoreIfPresent(player);
+        }
         new DupeFixer(this, this.menuItemMarker).register();
 
         this.ephemeralCooldownManager = new EphemeralCooldownManager(this);
@@ -193,6 +199,10 @@ public class DeluxeMenus extends JavaPlugin {
 
     public MenuItemMarker getMenuItemMarker() {
         return menuItemMarker;
+    }
+
+    public PlayerInventoryUiStore getPlayerInventoryUiStore() {
+        return playerInventoryUiStore;
     }
 
     public DeluxeMenusConfig getConfiguration() {
