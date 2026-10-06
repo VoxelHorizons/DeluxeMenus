@@ -110,6 +110,10 @@ public class MenuHolder implements InventoryHolder {
         return this.playerInventorySnapshot;
     }
 
+    public void clearPlayerInventorySnapshot() {
+        this.playerInventorySnapshot = null;
+    }
+
     public void restorePlayerInventorySlots() {
         if (this.playerInventorySnapshot == null) {
             return;
