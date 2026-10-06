@@ -217,6 +217,8 @@ public class Menu {
         }
 
         MenuHolder holder = optionalHolder.get();
+        final boolean restoredPlayerInventory = restorePlayerInventory
+                && holder.getPlayerInventorySnapshot() != null;
 
         holder.stopPlaceholderUpdate();
         holder.stopRefreshTask();
@@ -235,7 +237,7 @@ public class Menu {
         if (close) {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 player.closeInventory();
-                if (holder.getPlayerInventorySnapshot() == null) {
+                if (!restoredPlayerInventory) {
                     cleanInventory(plugin, player);
                 }
             });
