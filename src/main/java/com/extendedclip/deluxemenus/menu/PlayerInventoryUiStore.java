@@ -81,7 +81,6 @@ public final class PlayerInventoryUiStore {
         inventory.setContents(new ItemStack[inventory.getContents().length]);
         inventory.setArmorContents(new ItemStack[inventory.getArmorContents().length]);
         inventory.setExtraContents(new ItemStack[inventory.getExtraContents().length]);
-        inventory.setItemInOffHand(null);
         player.updateInventory();
     }
 
