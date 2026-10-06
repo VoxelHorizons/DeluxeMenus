@@ -82,6 +82,12 @@ public class Menu {
         for (Menu menu : Menu.getAllMenus()) {
             menu.unregisterCommand();
         }
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            PlayerInventoryUiStore.Snapshot snapshot = heldPlayerInventories.remove(player.getUniqueId());
+            if (snapshot != null) {
+                plugin.getPlayerInventoryUiStore().restoreAndDelete(player, snapshot);
+            }
+        }
         menus.clear();
         menuHolders.clear();
         lastOpenedMenus.clear();
@@ -104,6 +110,15 @@ public class Menu {
                 closeMenuForShutdown(plugin, player);
             }
         }
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            PlayerInventoryUiStore.Snapshot snapshot = heldPlayerInventories.remove(player.getUniqueId());
+            if (snapshot != null) {
+                plugin.getPlayerInventoryUiStore().restoreAndDelete(player, snapshot);
+            }
+        }
+
+        heldPlayerInventories.clear();
         menus.clear();
     }
 
@@ -220,7 +235,9 @@ public class Menu {
         if (close) {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 player.closeInventory();
-                cleanInventory(plugin, player);
+                if (holder.getPlayerInventorySnapshot() == null) {
+                    cleanInventory(plugin, player);
+                }
             });
         }
         menuHolders.remove(holder);
