@@ -247,14 +247,19 @@ public class Menu {
     }
 
     public static void closeMenuForShutdown(final @NotNull DeluxeMenus plugin, final @NotNull Player player) {
+        final boolean[] restoredPlayerInventory = {false};
+
         getMenuHolder(player).ifPresent(holder -> {
             holder.stopPlaceholderUpdate();
             holder.stopRefreshTask();
+            restoredPlayerInventory[0] = holder.getPlayerInventorySnapshot() != null;
             holder.restorePlayerInventorySlots();
         });
 
         player.closeInventory();
-        cleanInventory(plugin, player);
+        if (!restoredPlayerInventory[0]) {
+            cleanInventory(plugin, player);
+        }
     }
 
     public static void closeMenu(final @NotNull DeluxeMenus plugin, final @NotNull Player player, final boolean close) {
