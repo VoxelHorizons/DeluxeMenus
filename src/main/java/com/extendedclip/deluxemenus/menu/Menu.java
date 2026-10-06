@@ -28,6 +28,7 @@ public class Menu {
     private static final Map<String, Menu> menus = new HashMap<>();
     private static final Set<MenuHolder> menuHolders = new HashSet<>();
     private static final Map<UUID, Menu> lastOpenedMenus = new HashMap<>();
+    private static final Map<UUID, PlayerInventoryUiStore.Snapshot> heldPlayerInventories = new HashMap<>();
 
     private final DeluxeMenus plugin;
     private final MenuOptions options;
@@ -84,6 +85,7 @@ public class Menu {
         menus.clear();
         menuHolders.clear();
         lastOpenedMenus.clear();
+        heldPlayerInventories.clear();
     }
 
     private void unregisterCommand() {
@@ -184,6 +186,16 @@ public class Menu {
     }
 
     public static void closeMenu(final @NotNull DeluxeMenus plugin, final @NotNull Player player, final boolean close, final boolean executeCloseActions) {
+        closeMenu(plugin, player, close, executeCloseActions, true);
+    }
+
+    public static void closeMenu(
+            final @NotNull DeluxeMenus plugin,
+            final @NotNull Player player,
+            final boolean close,
+            final boolean executeCloseActions,
+            final boolean restorePlayerInventory
+    ) {
         Optional<MenuHolder> optionalHolder = getMenuHolder(player);
         if (optionalHolder.isEmpty()) {
             return;
@@ -193,7 +205,13 @@ public class Menu {
 
         holder.stopPlaceholderUpdate();
         holder.stopRefreshTask();
-        holder.restorePlayerInventorySlots();
+
+        if (restorePlayerInventory) {
+            holder.restorePlayerInventorySlots();
+        } else if (holder.getPlayerInventorySnapshot() != null) {
+            heldPlayerInventories.put(player.getUniqueId(), holder.getPlayerInventorySnapshot());
+            holder.clearPlayerInventorySnapshot();
+        }
 
         if (executeCloseActions) {
             holder.getMenu().map(Menu::options).map(MenuOptions::closeHandler).flatMap(h -> h).ifPresent(h -> h.onClick(holder));
@@ -304,7 +322,8 @@ public class Menu {
         Bukkit.getScheduler().runTask(plugin, () -> {
 
             if (isInMenu(viewer)) {
-                closeMenu(plugin, viewer, false);
+                // Preserve the inventory while deciding whether the next menu also needs it.
+                closeMenu(plugin, viewer, false, false, false);
             }
 
             Set<MenuItem> activeItems = new HashSet<>();
@@ -347,27 +366,36 @@ public class Menu {
             holder.setMenuName(this.options.name());
             holder.setActiveItems(activeItems);
 
-            final Set<Integer> playerSlots = new LinkedHashSet<>();
-            for (TreeMap<Integer, MenuItem> priorityItems : items.values()) {
-                for (MenuItem configuredItem : priorityItems.values()) {
-                    configuredItem.options().playerSlot().ifPresent(playerSlots::add);
-                }
-            }
+            final boolean holdPlayerInventory = activeItems.stream()
+                    .anyMatch(item -> item.options().playerSlot().isPresent());
 
-            if (!playerSlots.isEmpty()) {
-                plugin.getPlayerInventoryUiStore().restoreIfPresent(viewer);
+            final PlayerInventoryUiStore.Snapshot heldInventory =
+                    heldPlayerInventories.remove(viewer.getUniqueId());
+
+            if (holdPlayerInventory) {
                 try {
-                    holder.setPlayerInventorySnapshot(
-                            plugin.getPlayerInventoryUiStore().capture(viewer, playerSlots)
-                    );
+                    if (heldInventory != null) {
+                        holder.setPlayerInventorySnapshot(heldInventory);
+                    } else {
+                        PlayerInventoryUiStore.Snapshot recovered =
+                                plugin.getPlayerInventoryUiStore().restoreIfPresent(viewer);
+
+                        holder.setPlayerInventorySnapshot(
+                                recovered != null ? recovered : plugin.getPlayerInventoryUiStore().capture(viewer)
+                        );
+                    }
+
+                    plugin.getPlayerInventoryUiStore().hide(viewer);
                 } catch (java.io.IOException exception) {
                     plugin.printStacktrace(
-                            "Could not save player inventory slots before opening menu " + this.options.name()
+                            "Could not save player inventory before opening menu " + this.options.name()
                                     + " for " + viewer.getName() + ". The menu will not be opened.",
                             exception
                     );
                     return;
                 }
+            } else if (heldInventory != null) {
+                plugin.getPlayerInventoryUiStore().restoreAndDelete(viewer, heldInventory);
             }
 
             this.options.openHandler().ifPresent(h -> h.onClick(holder));
