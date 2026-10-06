@@ -384,6 +384,11 @@ public class Menu {
             }
 
             if (activeItems.isEmpty()) {
+                PlayerInventoryUiStore.Snapshot strandedInventory =
+                        heldPlayerInventories.remove(viewer.getUniqueId());
+                if (strandedInventory != null) {
+                    plugin.getPlayerInventoryUiStore().restoreAndDelete(viewer, strandedInventory);
+                }
                 return;
             }
 
