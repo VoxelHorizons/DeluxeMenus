@@ -245,7 +245,27 @@ public class MenuHolder implements InventoryHolder {
             Bukkit.getScheduler().runTask(plugin, () -> {
 
                 boolean update = false;
-                resetPlayerInventorySlots();
+                final boolean holdPlayerInventory = active.stream()
+                        .anyMatch(item -> item.options().playerSlot().isPresent());
+
+                try {
+                    if (holdPlayerInventory && playerInventorySnapshot == null) {
+                        playerInventorySnapshot = plugin.getPlayerInventoryUiStore().capture(getViewer());
+                        plugin.getPlayerInventoryUiStore().hide(getViewer());
+                    } else if (!holdPlayerInventory && playerInventorySnapshot != null) {
+                        plugin.getPlayerInventoryUiStore().restoreAndDelete(getViewer(), playerInventorySnapshot);
+                        playerInventorySnapshot = null;
+                    } else if (holdPlayerInventory) {
+                        resetPlayerInventorySlots();
+                    }
+                } catch (java.io.IOException exception) {
+                    plugin.printStacktrace(
+                            "Could not update player inventory UI state for " + getViewer().getName() + ".",
+                            exception
+                    );
+                    Menu.closeMenu(plugin, getViewer(), true);
+                    return;
+                }
 
                 for (MenuItem item : active) {
 
