@@ -79,9 +79,9 @@ public final class PlayerInventoryUiStore {
     public void hide(final @NotNull Player player) {
         final PlayerInventory inventory = player.getInventory();
 
-        Arrays.fill(inventory.getContents(), null);
-        Arrays.fill(inventory.getArmorContents(), null);
-        Arrays.fill(inventory.getExtraContents(), null);
+        inventory.setContents(new ItemStack[inventory.getContents().length]);
+        inventory.setArmorContents(new ItemStack[inventory.getArmorContents().length]);
+        inventory.setExtraContents(new ItemStack[inventory.getExtraContents().length]);
         inventory.setItemInOffHand(null);
         player.updateInventory();
     }
