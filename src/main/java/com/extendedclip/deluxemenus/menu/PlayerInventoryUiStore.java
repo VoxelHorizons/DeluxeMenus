@@ -13,19 +13,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 
 /**
- * Crash-safe storage for player inventory slots temporarily occupied by menu items.
+ * Crash-safe storage for player inventory state temporarily hidden by a DeluxeMenus UI.
  *
- * A recovery file is persisted before DeluxeMenus changes a player slot. Restoring is
- * authoritative for only those touched slots: temporary menu items are replaced by the
- * exact original stacks, then the recovery file is removed.
+ * A single snapshot owns the complete player inventory. This deliberately covers more
+ * than the player_slot positions so normal inventory items can never visually overlap
+ * a menu item or be accidentally moved/duplicated while the UI is active.
  */
 public final class PlayerInventoryUiStore {
 
@@ -34,24 +32,21 @@ public final class PlayerInventoryUiStore {
 
     public PlayerInventoryUiStore(final @NotNull DeluxeMenus plugin) {
         this.plugin = plugin;
-        this.directory = new File(plugin.getDataFolder(), "player-slot-recovery");
+        this.directory = new File(plugin.getDataFolder(), "player-inventory-recovery");
         if (!directory.exists() && !directory.mkdirs() && !directory.isDirectory()) {
-            throw new IllegalStateException("Unable to create player slot recovery directory " + directory);
+            throw new IllegalStateException("Unable to create player inventory recovery directory " + directory);
         }
     }
 
-    public Snapshot capture(final @NotNull Player player, final @NotNull Collection<Integer> slots) throws IOException {
-        final Map<Integer, ItemStack> originals = new LinkedHashMap<>();
+    public Snapshot capture(final @NotNull Player player) throws IOException {
         final PlayerInventory inventory = player.getInventory();
 
-        for (Integer slot : slots) {
-            if (slot == null || slot < 0 || slot > 35 || originals.containsKey(slot)) {
-                continue;
-            }
-            originals.put(slot, cloneItem(inventory.getItem(slot)));
-        }
+        final ItemStack[] contents = cloneItems(inventory.getContents());
+        final ItemStack[] armor = cloneItems(inventory.getArmorContents());
+        final ItemStack[] extra = cloneItems(inventory.getExtraContents());
+        final int heldSlot = inventory.getHeldItemSlot();
 
-        final Snapshot snapshot = new Snapshot(originals);
+        final Snapshot snapshot = new Snapshot(contents, armor, extra, heldSlot);
         writeAtomic(player.getUniqueId(), snapshot);
         return snapshot;
     }
@@ -63,23 +58,32 @@ public final class PlayerInventoryUiStore {
         }
 
         final YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
-        final List<Integer> slots = yaml.getIntegerList("slots");
-        if (slots.isEmpty()) {
-            plugin.getLogger().warning("Player-slot recovery file " + file.getName()
-                    + " contains no slots; leaving it untouched for manual recovery.");
+        final int contentsSize = yaml.getInt("contents-size", -1);
+        final int armorSize = yaml.getInt("armor-size", -1);
+        final int extraSize = yaml.getInt("extra-size", -1);
+
+        if (contentsSize < 0 || armorSize < 0 || extraSize < 0) {
+            plugin.getLogger().warning("Player inventory recovery file " + file.getName()
+                    + " is invalid; leaving it untouched for manual recovery.");
             return null;
         }
 
-        final Map<Integer, ItemStack> originals = new LinkedHashMap<>();
-        for (Integer slot : slots) {
-            if (slot == null || slot < 0 || slot > 35) {
-                plugin.getLogger().warning("Player-slot recovery file " + file.getName()
-                        + " contains invalid slot " + slot + "; leaving it untouched.");
-                return null;
-            }
-            originals.put(slot, cloneItem(yaml.getItemStack("items." + slot)));
-        }
-        return new Snapshot(originals);
+        final ItemStack[] contents = readItems(yaml, "contents", contentsSize);
+        final ItemStack[] armor = readItems(yaml, "armor", armorSize);
+        final ItemStack[] extra = readItems(yaml, "extra", extraSize);
+        final int heldSlot = Math.max(0, Math.min(8, yaml.getInt("held-slot", 0)));
+
+        return new Snapshot(contents, armor, extra, heldSlot);
+    }
+
+    public void hide(final @NotNull Player player) {
+        final PlayerInventory inventory = player.getInventory();
+
+        Arrays.fill(inventory.getContents(), null);
+        Arrays.fill(inventory.getArmorContents(), null);
+        Arrays.fill(inventory.getExtraContents(), null);
+        inventory.setItemInOffHand(null);
+        player.updateInventory();
     }
 
     public void restore(final @NotNull Player player, final Snapshot snapshot) {
@@ -88,9 +92,10 @@ public final class PlayerInventoryUiStore {
         }
 
         final PlayerInventory inventory = player.getInventory();
-        for (Map.Entry<Integer, ItemStack> entry : snapshot.originals.entrySet()) {
-            inventory.setItem(entry.getKey(), cloneItem(entry.getValue()));
-        }
+        inventory.setContents(cloneItems(snapshot.contents));
+        inventory.setArmorContents(cloneItems(snapshot.armor));
+        inventory.setExtraContents(cloneItems(snapshot.extra));
+        inventory.setHeldItemSlot(snapshot.heldSlot);
         player.updateInventory();
     }
 
@@ -100,26 +105,31 @@ public final class PlayerInventoryUiStore {
             delete(player.getUniqueId());
         } catch (RuntimeException exception) {
             plugin.getLogger().log(Level.SEVERE,
-                    "Failed to restore temporary DeluxeMenus player slots for " + player.getName()
+                    "Failed to restore temporary DeluxeMenus player inventory for " + player.getName()
                             + ". Recovery file has been retained.", exception);
         }
     }
 
-    public void restoreIfPresent(final @NotNull Player player) {
+    public Snapshot restoreIfPresent(final @NotNull Player player) {
         final Snapshot snapshot = load(player.getUniqueId());
         if (snapshot == null) {
-            return;
+            return null;
         }
 
-        plugin.getLogger().warning("Recovering temporary DeluxeMenus player slots for "
+        plugin.getLogger().warning("Recovering temporary DeluxeMenus player inventory for "
                 + player.getName() + " from an interrupted menu session.");
         restoreAndDelete(player, snapshot);
+        return snapshot;
+    }
+
+    public boolean hasRecovery(final @NotNull UUID uuid) {
+        return file(uuid).isFile();
     }
 
     public void delete(final @NotNull UUID uuid) {
         final File file = file(uuid);
         if (file.exists() && !file.delete()) {
-            plugin.getLogger().warning("Could not delete player-slot recovery file " + file.getAbsolutePath());
+            plugin.getLogger().warning("Could not delete player inventory recovery file " + file.getAbsolutePath());
         }
     }
 
@@ -128,11 +138,14 @@ public final class PlayerInventoryUiStore {
         final File temp = new File(directory, uuid + ".yml.tmp");
 
         final YamlConfiguration yaml = new YamlConfiguration();
-        final List<Integer> slots = new ArrayList<>(snapshot.originals.keySet());
-        yaml.set("slots", slots);
-        for (Map.Entry<Integer, ItemStack> entry : snapshot.originals.entrySet()) {
-            yaml.set("items." + entry.getKey(), cloneItem(entry.getValue()));
-        }
+        yaml.set("contents-size", snapshot.contents.length);
+        yaml.set("armor-size", snapshot.armor.length);
+        yaml.set("extra-size", snapshot.extra.length);
+        yaml.set("held-slot", snapshot.heldSlot);
+
+        writeItems(yaml, "contents", snapshot.contents);
+        writeItems(yaml, "armor", snapshot.armor);
+        writeItems(yaml, "extra", snapshot.extra);
         yaml.save(temp);
 
         try {
@@ -144,8 +157,37 @@ public final class PlayerInventoryUiStore {
         }
     }
 
+    private void writeItems(final YamlConfiguration yaml, final String path, final ItemStack[] items) {
+        for (int i = 0; i < items.length; i++) {
+            if (items[i] != null && items[i].getType() != Material.AIR) {
+                yaml.set(path + "." + i, items[i].clone());
+            }
+        }
+    }
+
+    private ItemStack[] readItems(final YamlConfiguration yaml, final String path, final int size) {
+        final ItemStack[] items = new ItemStack[size];
+        for (int i = 0; i < size; i++) {
+            ItemStack item = yaml.getItemStack(path + "." + i);
+            items[i] = cloneItem(item);
+        }
+        return items;
+    }
+
     private File file(final UUID uuid) {
         return new File(directory, uuid + ".yml");
+    }
+
+    private static ItemStack[] cloneItems(final ItemStack[] items) {
+        if (items == null) {
+            return new ItemStack[0];
+        }
+
+        final ItemStack[] result = new ItemStack[items.length];
+        for (int i = 0; i < items.length; i++) {
+            result[i] = cloneItem(items[i]);
+        }
+        return result;
     }
 
     private static ItemStack cloneItem(final ItemStack item) {
@@ -156,14 +198,21 @@ public final class PlayerInventoryUiStore {
     }
 
     public static final class Snapshot {
-        private final Map<Integer, ItemStack> originals;
+        private final ItemStack[] contents;
+        private final ItemStack[] armor;
+        private final ItemStack[] extra;
+        private final int heldSlot;
 
-        private Snapshot(final Map<Integer, ItemStack> originals) {
-            this.originals = originals;
-        }
-
-        public Collection<Integer> slots() {
-            return originals.keySet();
+        private Snapshot(
+                final ItemStack[] contents,
+                final ItemStack[] armor,
+                final ItemStack[] extra,
+                final int heldSlot
+        ) {
+            this.contents = cloneItems(contents);
+            this.armor = cloneItems(armor);
+            this.extra = cloneItems(extra);
+            this.heldSlot = heldSlot;
         }
     }
 }
