@@ -60,7 +60,9 @@ public class RegistrableMenuCommand extends Command {
 
         if (!menu.options().arguments().isEmpty()) {
             plugin.debug(DebugLevel.LOWEST, Level.INFO, "has args");
-            if (typedArgs.length < menu.options().arguments().size()) {
+            if (typedArgs.length < menu.options().arguments().size()
+                    && !(typedArgs.length == 0 && menu.options().arguments().size() == 1
+                    && menu.options().arguments().get(0).equalsIgnoreCase("player"))) {
                 if (menu.options().argumentsUsageMessage().isPresent()) {
                     String usageMessage = menu.options().argumentsUsageMessage().get();
                     Msg.msg(sender, StringUtils.replacePlaceholders(usageMessage, (Player) sender));
@@ -70,6 +72,11 @@ public class RegistrableMenuCommand extends Command {
             argMap = new HashMap<>();
             int index = 0;
             for (String arg : menu.options().arguments()) {
+                if (index >= typedArgs.length && arg.equalsIgnoreCase("player")) {
+                    argMap.put(arg, sender.getName());
+                    index++;
+                    continue;
+                }
                 if (index + 1 == menu.options().arguments().size()) {
                     String last = String.join(" ", Arrays.asList(typedArgs).subList(index, typedArgs.length));
                     plugin.debug(DebugLevel.LOWEST, Level.INFO, "arg: " + arg + " => " + last);
