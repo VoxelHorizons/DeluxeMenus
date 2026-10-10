@@ -65,7 +65,7 @@ public class RegistrableMenuCommand extends Command {
         }
     }
 
-    private Match findMatch(Menu candidate, String label, String[] values) {
+    private static Match findMatch(Menu candidate, String label, String[] values) {
         Match best = null;
         for (String pattern : candidate.options().commands()) {
             String[] tokens = pattern.trim().split("\\s+");
@@ -110,14 +110,17 @@ public class RegistrableMenuCommand extends Command {
             Msg.msg(sender, "Menus can only be opened by players!");
             return true;
         }
+        return dispatch((Player) sender, label, values, true);
+    }
+
+    public static boolean dispatch(Player viewer, String label, String[] values, boolean registeredOnly) {
         Match best = null;
         for (Menu candidate : Menu.getAllMenus()) {
-            if (!candidate.options().registerCommands()) continue;
-            Match match = findMatch(candidate, label, values);
-            if (match != null && (best == null || match.score > best.score)) best = match;
+            if (candidate.options().registerCommands() != registeredOnly) continue;
+            Match matched = findMatch(candidate, label, values);
+            if (matched != null && (best == null || matched.score > best.score)) best = matched;
         }
-        if (best == null) return true;
-        Player viewer = (Player) sender;
+        if (best == null) return false;
         String name = best.args.get("player");
         if (name != null && name.isEmpty()) {
             name = viewer.getName();
