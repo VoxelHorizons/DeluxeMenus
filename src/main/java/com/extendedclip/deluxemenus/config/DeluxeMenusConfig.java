@@ -465,8 +465,34 @@ public class DeluxeMenusConfig {
             }
         }
 
-        if (!openCommands.isEmpty()) {
-            builder.commands(openCommands);
+        // Command declarations may include named placeholders, e.g. "profile {player}".
+        // Only the literal command label is registered with Bukkit.
+        List<String> inlineArgumentNames = new ArrayList<>();
+        List<String> commandLabels = new ArrayList<>();
+        for (String declaration : openCommands) {
+            String[] tokens = declaration.trim().split("\\s+");
+            if (tokens.length == 0 || tokens[0].isEmpty()) continue;
+            commandLabels.add(tokens[0]);
+            if (tokens.length > 1) {
+                List<String> candidate = new ArrayList<>();
+                boolean valid = true;
+                for (int i = 1; i < tokens.length; i++) {
+                    String token = tokens[i];
+                    if (!token.matches("\\{[a-zA-Z][a-zA-Z0-9_]*\\}")) {
+                        valid = false;
+                        break;
+                    }
+                    candidate.add(token.substring(1, token.length() - 1));
+                }
+                if (valid && inlineArgumentNames.isEmpty()) {
+                    inlineArgumentNames.addAll(candidate);
+                } else if (!valid) {
+                    plugin.debug(DebugLevel.HIGHEST, Level.WARNING, "Invalid command arguments in: " + declaration);
+                }
+            }
+        }
+        if (!commandLabels.isEmpty()) {
+            builder.commands(new ArrayList<>(new LinkedHashSet<>(commandLabels)));
             builder.registerCommands(c.getBoolean(pre + "register_command", false));
         }
 
@@ -497,6 +523,7 @@ public class DeluxeMenusConfig {
             }
         }
 
+        if (argumentNames.isEmpty()) argumentNames.addAll(inlineArgumentNames);
         builder.arguments(argumentNames);
         builder.argumentRequirements(argumentRequirements);
         builder.argumentsUsageMessage(c.getString(pre + "args_usage_message", null));
