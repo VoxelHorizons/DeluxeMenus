@@ -55,7 +55,14 @@ public class StringUtils {
 
     @NotNull
     public static String replacePlaceholders(final @NotNull String input, final @NotNull Player player) {
-        return PlaceholderAPI.setPlaceholders(player, input);
+        try {
+            return PlaceholderAPI.setPlaceholders(player, input);
+        } catch (RuntimeException exception) {
+            // External PlaceholderAPI expansions may throw on malformed values.
+            // Keep the menu renderable instead of aborting inventory rendering.
+            // Preserve the original text so configuration mistakes remain visible.
+            return input;
+        }
     }
 
     @NotNull
