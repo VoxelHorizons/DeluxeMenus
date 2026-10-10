@@ -15,6 +15,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -81,8 +84,32 @@ public class RegistrableMenuCommand extends Command {
 
         Player player = (Player) sender;
         plugin.debug(DebugLevel.LOWEST, Level.INFO, "opening menu: " + menu.options().name());
-        menu.openMenu(player, argMap, null);
+        Player target = argMap == null ? null : Bukkit.getPlayerExact(argMap.getOrDefault("player", ""));
+        menu.openMenu(player, argMap, target);
         return true;
+    }
+
+    @Override
+    public @NotNull List<String> tabComplete(final @NotNull CommandSender sender,
+                                              final @NotNull String alias,
+                                              final @NotNull String[] args) {
+        if (!(sender instanceof Player) || args.length == 0 || menu == null) {
+            return Collections.emptyList();
+        }
+        final List<String> names = menu.options().arguments();
+        if (args.length > names.size() || !names.get(args.length - 1).equalsIgnoreCase("player")) {
+            return Collections.emptyList();
+        }
+        final String prefix = args[args.length - 1].toLowerCase(Locale.ROOT);
+        final List<String> completions = new ArrayList<>();
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online.getName().toLowerCase(Locale.ROOT).startsWith(prefix)
+                    && ((Player) sender).canSee(online)) {
+                completions.add(online.getName());
+            }
+        }
+        Collections.sort(completions);
+        return completions;
     }
 
     public void register() {
