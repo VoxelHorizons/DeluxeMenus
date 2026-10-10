@@ -466,34 +466,20 @@ public class DeluxeMenusConfig {
             }
         }
 
-        // Command declarations may include named placeholders, e.g. "profile {player}".
-        // Only the literal command label is registered with Bukkit.
+        // Preserve full patterns: literal subcommands and <named> arguments.
+        // The command dispatcher registers only the root labels.
         List<String> inlineArgumentNames = new ArrayList<>();
-        List<String> commandLabels = new ArrayList<>();
         for (String declaration : openCommands) {
             String[] tokens = declaration.trim().split("\\s+");
-            if (tokens.length == 0 || tokens[0].isEmpty()) continue;
-            commandLabels.add(tokens[0]);
-            if (tokens.length > 1) {
-                List<String> candidate = new ArrayList<>();
-                boolean valid = true;
-                for (int i = 1; i < tokens.length; i++) {
-                    String token = tokens[i];
-                    if (!token.matches("\\{[a-zA-Z][a-zA-Z0-9_]*\\}")) {
-                        valid = false;
-                        break;
-                    }
-                    candidate.add(token.substring(1, token.length() - 1));
-                }
-                if (valid && inlineArgumentNames.isEmpty()) {
-                    inlineArgumentNames.addAll(candidate);
-                } else if (!valid) {
-                    plugin.debug(DebugLevel.HIGHEST, Level.WARNING, "Invalid command arguments in: " + declaration);
+            for (int i = 1; i < tokens.length; i++) {
+                if (tokens[i].matches("<[a-zA-Z][a-zA-Z0-9_]*>")) {
+                    String name = tokens[i].substring(1, tokens[i].length() - 1);
+                    if (!inlineArgumentNames.contains(name)) inlineArgumentNames.add(name);
                 }
             }
         }
-        if (!commandLabels.isEmpty()) {
-            builder.commands(new ArrayList<>(new LinkedHashSet<>(commandLabels)));
+        if (!openCommands.isEmpty()) {
+            builder.commands(openCommands);
             builder.registerCommands(c.getBoolean(pre + "register_command", false));
         }
 
