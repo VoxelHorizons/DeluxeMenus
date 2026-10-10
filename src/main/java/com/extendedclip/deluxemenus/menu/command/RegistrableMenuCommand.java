@@ -74,7 +74,7 @@ public class RegistrableMenuCommand extends Command {
             boolean self = count == 1 && tokens[1].equalsIgnoreCase("<player>") && values.length == 0;
             if (values.length < count && !self) continue;
             Map<String, String> args = new HashMap<>();
-            int score = 0;
+            int score = tokens.length == 1 && values.length == 0 ? 20 : 0;
             boolean valid = true;
             for (int i = 1; i < tokens.length; i++) {
                 String token = tokens[i];
