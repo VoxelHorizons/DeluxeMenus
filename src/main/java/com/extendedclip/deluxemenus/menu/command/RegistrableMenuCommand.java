@@ -16,6 +16,8 @@ import org.jetbrains.annotations.NotNull;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.Collections;
 import java.util.List;
 import java.util.HashMap;
@@ -27,6 +29,7 @@ public class RegistrableMenuCommand extends Command {
 
     private static final String FALLBACK_PREFIX = "DeluxeMenus".toLowerCase(Locale.ROOT).trim();
     private static CommandMap commandMap = null;
+    private static final Map<String, RegistrableMenuCommand> ROOTS = new HashMap<>();
 
     private final DeluxeMenus plugin;
 
@@ -36,87 +39,124 @@ public class RegistrableMenuCommand extends Command {
 
     public RegistrableMenuCommand(final @NotNull DeluxeMenus plugin,
                                   final @NotNull Menu menu) {
-        super(menu.options().commands().isEmpty() ? menu.options().name() : menu.options().commands().get(0));
+        super(menu.options().commands().isEmpty() ? menu.options().name() : root(menu.options().commands().get(0)));
         this.plugin = plugin;
         this.menu = menu;
 
-        if (menu.options().commands().size() > 1) {
-            this.setAliases(menu.options().commands().subList(1, menu.options().commands().size()));
+        Set<String> roots = new LinkedHashSet<>();
+        for (String pattern : menu.options().commands()) roots.add(root(pattern));
+        roots.remove(getName());
+        setAliases(new ArrayList<>(roots));
+    }
+
+
+    private static String root(String pattern) {
+        return pattern.trim().split("\\s+")[0].toLowerCase(Locale.ROOT);
+    }
+
+    private static final class Match {
+        final Menu menu;
+        final Map<String, String> args;
+        final int score;
+        Match(Menu menu, Map<String, String> args, int score) {
+            this.menu = menu;
+            this.args = args;
+            this.score = score;
         }
     }
 
-    @Override
-    public boolean execute(final @NotNull CommandSender sender, final @NotNull String commandLabel, final @NotNull String[] typedArgs) {
-        if (this.unregistered) {
-            throw new IllegalStateException("This command was unregistered!");
+    private Match findMatch(Menu candidate, String label, String[] values) {
+        Match best = null;
+        for (String pattern : candidate.options().commands()) {
+            String[] tokens = pattern.trim().split("\\s+");
+            if (!tokens[0].equalsIgnoreCase(label)) continue;
+            int count = tokens.length - 1;
+            boolean self = count == 1 && tokens[1].equalsIgnoreCase("<player>") && values.length == 0;
+            if (values.length < count && !self) continue;
+            Map<String, String> args = new HashMap<>();
+            int score = 0;
+            boolean valid = true;
+            for (int i = 1; i < tokens.length; i++) {
+                String token = tokens[i];
+                if (token.matches("<[a-zA-Z][a-zA-Z0-9_]*>")) {
+                    args.put(token.substring(1, token.length() - 1),
+                            i <= values.length ? values[i - 1] : "");
+                } else if (i > values.length || !token.equalsIgnoreCase(values[i - 1])) {
+                    valid = false;
+                    break;
+                } else {
+                    score += 10;
+                }
+            }
+            if (!valid) continue;
+            if (count == 0 && !candidate.options().arguments().isEmpty()) {
+                if (values.length < candidate.options().arguments().size()) continue;
+                for (int i = 0; i < candidate.options().arguments().size(); i++) {
+                    String key = candidate.options().arguments().get(i);
+                    args.put(key, i == candidate.options().arguments().size() - 1
+                            ? String.join(" ", Arrays.asList(values).subList(i, values.length))
+                            : values[i]);
+                }
+            } else if (values.length > count) continue;
+            if (best == null || score > best.score) best = new Match(candidate, args, score);
         }
+        return best;
+    }
 
+    @Override
+    public boolean execute(@NotNull CommandSender sender, @NotNull String label, @NotNull String[] values) {
+        if (unregistered) return true;
         if (!(sender instanceof Player)) {
             Msg.msg(sender, "Menus can only be opened by players!");
             return true;
         }
-
-        Map<String, String> argMap = null;
-
-        if (!menu.options().arguments().isEmpty()) {
-            plugin.debug(DebugLevel.LOWEST, Level.INFO, "has args");
-            if (typedArgs.length < menu.options().arguments().size()
-                    && !(typedArgs.length == 0 && menu.options().arguments().size() == 1
-                    && menu.options().arguments().get(0).equalsIgnoreCase("player"))) {
-                if (menu.options().argumentsUsageMessage().isPresent()) {
-                    String usageMessage = menu.options().argumentsUsageMessage().get();
-                    Msg.msg(sender, StringUtils.replacePlaceholders(usageMessage, (Player) sender));
-                }
-                return true;
-            }
-            argMap = new HashMap<>();
-            int index = 0;
-            for (String arg : menu.options().arguments()) {
-                if (index >= typedArgs.length && arg.equalsIgnoreCase("player")) {
-                    argMap.put(arg, sender.getName());
-                    index++;
-                    continue;
-                }
-                if (index + 1 == menu.options().arguments().size()) {
-                    String last = String.join(" ", Arrays.asList(typedArgs).subList(index, typedArgs.length));
-                    plugin.debug(DebugLevel.LOWEST, Level.INFO, "arg: " + arg + " => " + last);
-                    argMap.put(arg, last);
-                } else {
-                    argMap.put(arg, typedArgs[index]);
-                    plugin.debug(DebugLevel.LOWEST, Level.INFO, "arg: " + arg + " => " + typedArgs[index]);
-                }
-                index++;
-            }
+        Match best = null;
+        for (Menu candidate : Menu.getAllMenus()) {
+            if (!candidate.options().registerCommands()) continue;
+            Match match = findMatch(candidate, label, values);
+            if (match != null && (best == null || match.score > best.score)) best = match;
         }
-
-        Player player = (Player) sender;
-        plugin.debug(DebugLevel.LOWEST, Level.INFO, "opening menu: " + menu.options().name());
-        Player target = argMap == null ? null : Bukkit.getPlayerExact(argMap.getOrDefault("player", ""));
-        menu.openMenu(player, argMap, target);
+        if (best == null) return true;
+        Player viewer = (Player) sender;
+        String name = best.args.get("player");
+        if (name != null && name.isEmpty()) {
+            name = viewer.getName();
+            best.args.put("player", name);
+        }
+        Player target = name == null ? null : Bukkit.getPlayerExact(name);
+        best.menu.openMenu(viewer, best.args, target);
         return true;
     }
 
     @Override
-    public @NotNull List<String> tabComplete(final @NotNull CommandSender sender,
-                                              final @NotNull String alias,
-                                              final @NotNull String[] args) {
-        if (!(sender instanceof Player) || args.length == 0 || menu == null) {
-            return Collections.emptyList();
-        }
-        final List<String> names = menu.options().arguments();
-        if (args.length > names.size() || !names.get(args.length - 1).equalsIgnoreCase("player")) {
-            return Collections.emptyList();
-        }
-        final String prefix = args[args.length - 1].toLowerCase(Locale.ROOT);
-        final List<String> completions = new ArrayList<>();
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            if (online.getName().toLowerCase(Locale.ROOT).startsWith(prefix)
-                    && ((Player) sender).canSee(online)) {
-                completions.add(online.getName());
+    public @NotNull List<String> tabComplete(@NotNull CommandSender sender,
+                                              @NotNull String alias, @NotNull String[] args) {
+        if (!(sender instanceof Player) || args.length == 0) return Collections.emptyList();
+        String prefix = args[args.length - 1].toLowerCase(Locale.ROOT);
+        Set<String> matches = new LinkedHashSet<>();
+        for (Menu candidate : Menu.getAllMenus()) {
+            if (!candidate.options().registerCommands()) continue;
+            for (String pattern : candidate.options().commands()) {
+                String[] tokens = pattern.trim().split("\\s+");
+                if (!tokens[0].equalsIgnoreCase(alias) || args.length >= tokens.length) continue;
+                boolean valid = true;
+                for (int i = 1; i < args.length; i++) {
+                    if (!tokens[i].matches("<[a-zA-Z][a-zA-Z0-9_]*>")
+                            && !tokens[i].equalsIgnoreCase(args[i - 1])) valid = false;
+                }
+                if (!valid) continue;
+                String token = tokens[args.length];
+                if (token.equalsIgnoreCase("<player>")) {
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        if (((Player)sender).canSee(player) && player.getName().toLowerCase(Locale.ROOT).startsWith(prefix))
+                            matches.add(player.getName());
+                    }
+                } else if (!token.startsWith("<") && token.toLowerCase(Locale.ROOT).startsWith(prefix)) matches.add(token);
             }
         }
-        Collections.sort(completions);
-        return completions;
+        List<String> result = new ArrayList<>(matches);
+        result.sort(String.CASE_INSENSITIVE_ORDER);
+        return result;
     }
 
     public void register() {
@@ -128,7 +168,7 @@ public class RegistrableMenuCommand extends Command {
         }
 
         registered = true;
-        registered = true;
+        if (ROOTS.containsKey(getName().toLowerCase(Locale.ROOT))) return;
 
         if (commandMap == null) {
             try {
@@ -158,6 +198,7 @@ public class RegistrableMenuCommand extends Command {
         }
 
         boolean registered = commandMap.register(FALLBACK_PREFIX, this);
+        if (registered) ROOTS.put(getName().toLowerCase(Locale.ROOT), this);
         if (registered) {
             plugin.debug(
                     DebugLevel.LOW,
@@ -184,6 +225,11 @@ public class RegistrableMenuCommand extends Command {
         }
 
         unregistered = true;
+        if (ROOTS.get(getName().toLowerCase(Locale.ROOT)) != this) {
+            this.menu = null;
+            return;
+        }
+        ROOTS.remove(getName().toLowerCase(Locale.ROOT));
 
         if (commandMap == null) {
             this.menu = null;
