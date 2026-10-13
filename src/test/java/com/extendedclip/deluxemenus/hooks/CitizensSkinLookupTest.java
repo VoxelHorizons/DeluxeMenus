@@ -6,7 +6,7 @@ import java.util.Base64;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CitizensSkinLookupTest {
-    static class SampleTrait {
+    public static class SampleTrait {
         private final String texture;
         SampleTrait(String texture) { this.texture = texture; }
         public String getTexture() { return texture; }
