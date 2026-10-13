@@ -47,94 +47,69 @@ public class OpenCommand extends SubCommand {
             return;
         }
 
-        Player viewer;
-        String placeholderPlayer = null;
-
-        if (arguments.size() == 2 && arguments.get(1).startsWith("-p:")) {
-            if (!sender.hasPermission("deluxemenus.placeholdersfor")) {
-                plugin.sms(sender, Messages.NO_PERMISSION_PLAYER_ARGUMENT);
-                return;
-            }
-
-            placeholderPlayer = arguments.get(1).replace("-p:", "");
-
-        } else if (arguments.size() >= 3 && arguments.get(2).startsWith("-p:")) {
-            if (!sender.hasPermission("deluxemenus.placeholdersfor")) {
-                plugin.sms(sender, Messages.NO_PERMISSION_PLAYER_ARGUMENT);
-                return;
-            }
-
-            placeholderPlayer = arguments.get(2).replace("-p:", "");
+        // Command arguments: /dm open <menu> [viewer] [-p:placeholder-player] [menu args...]
+        // Citizens substitutes <p> and <npc> before executing its console command.
+        // The existing registered open_command is not needed for this pathway.
+        final OpenMenuArguments parsed;
+        try {
+            parsed = OpenMenuArguments.parse(arguments);
+        } catch (IllegalArgumentException invalid) {
+            sender.sendMessage("Invalid /dm open arguments: " + invalid.getMessage());
+            return;
         }
 
-        if (arguments.size() >= 2) {
-            if (placeholderPlayer == null) {
-                if (player && !sender.hasPermission("deluxemenus.open.others")) {
-                    plugin.sms(sender, Messages.NO_PERMISSION);
-                    return;
-                }
-
-                viewer = Bukkit.getPlayerExact(arguments.get(1));
-
-            } else {
-                if (arguments.size() >= 3) {
-                    if (!sender.hasPermission("deluxemenus.open.others")) {
-                        plugin.sms(sender, Messages.NO_PERMISSION);
-                        return;
-                    }
-
-                    viewer = Bukkit.getPlayerExact(arguments.get(1));
-
-                } else {
-                    if (!player) {
-                        plugin.sms(sender, Messages.MUST_SPECIFY_PLAYER);
-                        return;
-                    }
-
-                    viewer = (Player) sender;
-                }
-            }
-
-        } else {
-            if (!player) {
-                plugin.sms(sender, Messages.MUST_SPECIFY_PLAYER);
-                return;
-            }
-
-            viewer = (Player) sender;
+        final String viewerName = parsed.viewerName();
+        if (viewerName == null && !player) {
+            plugin.sms(sender, Messages.MUST_SPECIFY_PLAYER);
+            return;
+        }
+        if (viewerName != null && player && !sender.hasPermission("deluxemenus.open.others")) {
+            plugin.sms(sender, Messages.NO_PERMISSION);
+            return;
+        }
+        if (parsed.placeholderPlayerName() != null && !sender.hasPermission("deluxemenus.placeholdersfor")) {
+            plugin.sms(sender, Messages.NO_PERMISSION_PLAYER_ARGUMENT);
+            return;
         }
 
+        Player viewer = viewerName != null ? Bukkit.getPlayerExact(viewerName) : (Player) sender;
         if (viewer == null) {
-            plugin.sms(sender, Messages.PLAYER_IS_NOT_ONLINE.message().replaceText(PLAYER_REPLACER_BUILDER.replacement(arguments.get(1)).build()));
+            plugin.sms(sender, Messages.PLAYER_IS_NOT_ONLINE.message()
+                    .replaceText(PLAYER_REPLACER_BUILDER.replacement(viewerName).build()));
             return;
         }
 
         Player placeholder = null;
-
-        if (placeholderPlayer != null) {
-            placeholder = Bukkit.getPlayerExact(placeholderPlayer);
-
+        if (parsed.placeholderPlayerName() != null) {
+            placeholder = Bukkit.getPlayerExact(parsed.placeholderPlayerName());
             if (placeholder == null) {
-                plugin.sms(sender, Messages.PLAYER_IS_NOT_ONLINE.message().replaceText(PLAYER_REPLACER_BUILDER.replacement(placeholderPlayer).build()));
+                plugin.sms(sender, Messages.PLAYER_IS_NOT_ONLINE.message().replaceText(
+                        PLAYER_REPLACER_BUILDER.replacement(parsed.placeholderPlayerName()).build()));
                 return;
-
-            } else {
-                if (placeholder.hasPermission("deluxemenus.placeholdersfor.exempt")) {
-                    plugin.sms(sender, Messages.PLAYER_IS_EXEMPT.message().replaceText(PLAYER_REPLACER_BUILDER.replacement(placeholderPlayer).build()));
-
-                    return;
-                }
+            }
+            if (placeholder.hasPermission("deluxemenus.placeholdersfor.exempt")) {
+                plugin.sms(sender, Messages.PLAYER_IS_EXEMPT.message().replaceText(
+                        PLAYER_REPLACER_BUILDER.replacement(parsed.placeholderPlayerName()).build()));
+                return;
             }
         }
 
         Optional<Menu> menu = Menu.getMenuByName(arguments.get(0));
-
         if (menu.isEmpty()) {
-            plugin.sms(sender, Messages.INVALID_MENU.message().replaceText(MENU_REPLACER_BUILDER.replacement(arguments.get(0)).build()));
+            plugin.sms(sender, Messages.INVALID_MENU.message()
+                    .replaceText(MENU_REPLACER_BUILDER.replacement(arguments.get(0)).build()));
             return;
         }
 
-        menu.get().openMenu(viewer, null, placeholder);
+        final java.util.Map<String, String> typedArgs;
+        try {
+            typedArgs = parsed.typedArguments(menu.get().options().arguments());
+        } catch (IllegalArgumentException invalid) {
+            sender.sendMessage("Cannot open menu '" + arguments.get(0) + "': " + invalid.getMessage());
+            return;
+        }
+
+        menu.get().openMenu(viewer, typedArgs, placeholder);
     }
 
     @Override

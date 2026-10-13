@@ -45,8 +45,8 @@ jobs:
             echo "ARTIFACT_NAME=DeluxeMenus-latest-${GITHUB_SHA::8}" >> "$GITHUB_ENV"
           fi
 
-      - name: Build shaded JAR
-        run: ./gradlew clean shadowJar
+      - name: Test and build shaded JAR
+        run: ./gradlew clean test shadowJar
         env:
           BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
 

@@ -283,6 +283,15 @@ public class DeluxeMenus extends JavaPlugin {
         this.itemHooks.put(HeadType.BASE64.getHookName(), new BaseHeadHook(this));
         this.itemHooks.put(HeadType.TEXTURE.getHookName(), textureHeadHook);
 
+        // Citizens is optional. <npc> is expanded by Citizens' command trait;
+        // the corresponding menu arg can render the NPC's actual skin using
+        // material: citizenshead-{npc}. No Citizens API classes are linked when absent.
+        if (Bukkit.getPluginManager().isPluginEnabled("Citizens")) {
+            this.itemHooks.put("citizenshead", new CitizensHeadHook(this));
+            this.debug(DebugLevel.HIGHEST, Level.INFO,
+                    "Citizens NPC portrait material (citizenshead-<id>) enabled.");
+        }
+
         if (Bukkit.getPluginManager().isPluginEnabled("HeadDatabase")) {
             try {
                 Class.forName("me.arcaniax.hdb.api.HeadDatabaseAPI");

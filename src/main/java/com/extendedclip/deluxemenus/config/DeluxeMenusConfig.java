@@ -62,6 +62,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -465,6 +466,18 @@ public class DeluxeMenusConfig {
             }
         }
 
+        // Preserve full patterns: literal subcommands and <named> arguments.
+        // The command dispatcher registers only the root labels.
+        List<String> inlineArgumentNames = new ArrayList<>();
+        for (String declaration : openCommands) {
+            String[] tokens = declaration.trim().split("\\s+");
+            for (int i = 1; i < tokens.length; i++) {
+                if (tokens[i].matches("<[a-zA-Z][a-zA-Z0-9_]*>")) {
+                    String name = tokens[i].substring(1, tokens[i].length() - 1);
+                    if (!inlineArgumentNames.contains(name)) inlineArgumentNames.add(name);
+                }
+            }
+        }
         if (!openCommands.isEmpty()) {
             builder.commands(openCommands);
             builder.registerCommands(c.getBoolean(pre + "register_command", false));
@@ -497,6 +510,7 @@ public class DeluxeMenusConfig {
             }
         }
 
+        if (argumentNames.isEmpty()) argumentNames.addAll(inlineArgumentNames);
         builder.arguments(argumentNames);
         builder.argumentRequirements(argumentRequirements);
         builder.argumentsUsageMessage(c.getString(pre + "args_usage_message", null));

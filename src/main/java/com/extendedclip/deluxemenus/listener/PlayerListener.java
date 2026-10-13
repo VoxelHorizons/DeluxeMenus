@@ -5,6 +5,7 @@ import com.extendedclip.deluxemenus.action.ClickHandler;
 import com.extendedclip.deluxemenus.menu.Menu;
 import com.extendedclip.deluxemenus.menu.MenuHolder;
 import com.extendedclip.deluxemenus.menu.MenuItem;
+import com.extendedclip.deluxemenus.menu.command.RegistrableMenuCommand;
 import com.extendedclip.deluxemenus.requirement.RequirementList;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -39,22 +40,12 @@ public class PlayerListener extends Listener {
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onCommandExecute(PlayerCommandPreprocessEvent event) {
 
-        final String cmd = event.getMessage().substring(1);
-        final Optional<Menu> optionalMenu = Menu.getMenuByCommand(cmd.toLowerCase());
-
-        if (optionalMenu.isEmpty()) {
-            return;
+        final String[] tokens = event.getMessage().substring(1).trim().split("\\s+");
+        if (tokens.length == 0 || tokens[0].isEmpty()) return;
+        final String[] args = java.util.Arrays.copyOfRange(tokens, 1, tokens.length);
+        if (RegistrableMenuCommand.dispatch(event.getPlayer(), tokens[0], args, false)) {
+            event.setCancelled(true);
         }
-
-        final Menu menu = optionalMenu.get();
-
-        if (menu.options().registerCommands()) {
-            return;
-        }
-
-        Player player = event.getPlayer();
-        menu.openMenu(player);
-        event.setCancelled(true);
     }
 
     @EventHandler
