@@ -1,6 +1,9 @@
 package com.extendedclip.deluxemenus.utils;
 
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import org.bukkit.Bukkit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,6 +18,9 @@ public class StringUtils {
 
     private final static Pattern HEX_PATTERN = Pattern
             .compile("&(#[a-f0-9]{6})", Pattern.CASE_INSENSITIVE);
+
+    // Track failures across menu refresh ticks to avoid flooding the console.
+    private static final Set<String> REPORTED_EXPANSION_FAILURES = ConcurrentHashMap.newKeySet();
 
     /**
      * Translates the ampersand color codes like '&7' to their section symbol counterparts like '§7'.
@@ -55,14 +61,18 @@ public class StringUtils {
 
     @NotNull
     public static String replacePlaceholders(final @NotNull String input, final @NotNull Player player) {
-        try {
-            return PlaceholderAPI.setPlaceholders(player, input);
-        } catch (RuntimeException exception) {
-            // External PlaceholderAPI expansions may throw on malformed values.
-            // Keep the menu renderable instead of aborting inventory rendering.
-            // Preserve the original text so configuration mistakes remain visible.
-            return input;
-        }
+        // Outdated expansions may reference removed classes (NoClassDefFoundError).
+        // Preserve this line but allow the rest of the inventory to render.
+        return PlaceholderFailureGuard.resolve(input,
+                () -> PlaceholderAPI.setPlaceholders(player, input),
+                failure -> {
+                    String signature = failure.getClass().getName() + ": " + failure.getMessage();
+                    if (REPORTED_EXPANSION_FAILURES.add(signature)) {
+                        Bukkit.getLogger().warning("[DeluxeMenus] PlaceholderAPI expansion failed ("
+                                + signature + "). The affected menu text was left unchanged. "
+                                + "Update or remove the incompatible placeholder expansion.");
+                    }
+                });
     }
 
     @NotNull
