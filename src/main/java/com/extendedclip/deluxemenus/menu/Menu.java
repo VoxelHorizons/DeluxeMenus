@@ -363,8 +363,8 @@ public class Menu {
 
             // Fullscreen menus opt in explicitly; menus using player_slot must always
             // hide the rest of the player's inventory to avoid overlapping the UI.
-            final boolean hidePlayerInventory = this.options.hidePlayerInventory()
-                    || activeItems.stream().anyMatch(item -> item.options().playerSlot().isPresent());
+            final boolean hidePlayerInventory = InventoryVisibilityPolicy.shouldHide(this.options.hidePlayerInventory(),
+                    activeItems.stream().anyMatch(item -> item.options().playerSlot().isPresent()));
 
             if (hidePlayerInventory) {
                 if (!plugin.getPlayerInventoryUiStore().restoreIfPresent(viewer)) {
