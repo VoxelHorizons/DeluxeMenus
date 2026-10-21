@@ -15,10 +15,13 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.NotNull;
 
@@ -88,12 +91,45 @@ public class PlayerListener extends Listener {
 
         final Player player = (Player) event.getPlayer();
 
-        if (Menu.isInMenu(player)) {
+        Menu.getMenuHolder(player).ifPresent(holder -> {
+            if (holder.getInventory() != event.getInventory()) {
+                return;
+            }
+
+            final boolean protectedInventory = holder.getPlayerInventorySnapshot() != null;
             Menu.closeMenu(plugin, player, false);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                Menu.cleanInventory(plugin, player);
-                player.updateInventory();
-            }, 3L);
+            // Cleanup only applies to legacy menus. Protected inventories were
+            // restored from disk and must never be filtered by menu-item markers.
+            if (!protectedInventory) {
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (!Menu.isInMenu(player)) {
+                        Menu.cleanInventory(plugin, player);
+                    }
+                }, 3L);
+            }
+        });
+    }
+
+    @EventHandler(priority = EventPriority.LOW)
+    public void onDrag(InventoryDragEvent event) {
+        if (event.getWhoClicked() instanceof Player player && Menu.isInMenu(player)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW)
+    public void onSwapHands(PlayerSwapHandItemsEvent event) {
+        if (Menu.getMenuHolder(event.getPlayer())
+                .map(holder -> holder.getPlayerInventorySnapshot() != null).orElse(false)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW)
+    public void onDrop(PlayerDropItemEvent event) {
+        if (Menu.getMenuHolder(event.getPlayer())
+                .map(holder -> holder.getPlayerInventorySnapshot() != null).orElse(false)) {
+            event.setCancelled(true);
         }
     }
 
