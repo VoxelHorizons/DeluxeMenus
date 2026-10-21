@@ -249,8 +249,8 @@ public class MenuHolder implements InventoryHolder {
                     return;
                 }
 
-                final boolean hideInventory = menu.options().hidePlayerInventory()
-                        || active.stream().anyMatch(item -> item.options().playerSlot().isPresent());
+                final boolean hideInventory = InventoryVisibilityPolicy.shouldHide(menu.options().hidePlayerInventory(),
+                        active.stream().anyMatch(item -> item.options().playerSlot().isPresent()));
 
                 try {
                     if (hideInventory && playerInventorySnapshot == null) {
