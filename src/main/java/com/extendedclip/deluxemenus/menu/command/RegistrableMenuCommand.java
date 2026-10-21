@@ -9,11 +9,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -166,39 +164,11 @@ public class RegistrableMenuCommand extends Command {
         if (registered) {
             throw new IllegalStateException("This command was already registered!");
         }
-        if (registered) {
-            throw new IllegalStateException("This command was already registered!");
-        }
 
         registered = true;
         if (ROOTS.containsKey(getName().toLowerCase(Locale.ROOT))) return;
 
-        if (commandMap == null) {
-            try {
-                final Field f = Bukkit.getServer().getClass().getDeclaredField("commandMap");
-                f.setAccessible(true);
-                commandMap = (CommandMap) f.get(Bukkit.getServer());
-            } catch (final @NotNull Exception exception) {
-                plugin.printStacktrace(
-                        "Something went wrong while trying to register command: " + this.getName(),
-                        exception
-                );
-                return;
-            }
-        }
-        if (commandMap == null) {
-            try {
-                final Field f = Bukkit.getServer().getClass().getDeclaredField("commandMap");
-                f.setAccessible(true);
-                commandMap = (CommandMap) f.get(Bukkit.getServer());
-            } catch (final @NotNull Exception exception) {
-                plugin.printStacktrace(
-                        "Something went wrong while trying to register command: " + this.getName(),
-                        exception
-                );
-                return;
-            }
-        }
+        commandMap = Bukkit.getCommandMap();
 
         boolean registered = commandMap.register(FALLBACK_PREFIX, this);
         if (registered) ROOTS.put(getName().toLowerCase(Locale.ROOT), this);
@@ -239,15 +209,9 @@ public class RegistrableMenuCommand extends Command {
             return;
         }
 
-        Field cMap;
-        Field knownCommands;
         try {
-            cMap = Bukkit.getServer().getClass().getDeclaredField("commandMap");
-            cMap.setAccessible(true);
-            knownCommands = SimpleCommandMap.class.getDeclaredField("knownCommands");
-            knownCommands.setAccessible(true);
-
-            final Map<String, Command> knownCommandsMap = (Map<String, Command>) knownCommands.get(cMap.get(Bukkit.getServer()));
+            final CommandMap currentCommandMap = Bukkit.getCommandMap();
+            final Map<String, Command> knownCommandsMap = currentCommandMap.getKnownCommands();
 
             // We need to remove every single alias because CommandMap#register() adds them all to the map.
             // If we do not remove them, then we will have dangling references to the command.
@@ -259,9 +223,8 @@ public class RegistrableMenuCommand extends Command {
                 knownCommandsMap.remove(FALLBACK_PREFIX + ":" + alias);
             }
 
-            boolean unregistered = this.unregister((CommandMap) cMap.get(Bukkit.getServer()));
-            this.unregister(commandMap);
-            if (unregistered) {
+            boolean wasUnregistered = this.unregister(currentCommandMap);
+            if (wasUnregistered) {
                 plugin.debug(
                         DebugLevel.HIGH,
                         Level.INFO,
