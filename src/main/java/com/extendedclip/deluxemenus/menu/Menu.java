@@ -221,6 +221,8 @@ public class Menu {
             holder.stopPlaceholderUpdate();
             holder.stopRefreshTask();
             holder.restorePlayerInventorySlots();
+            // A synchronous InventoryCloseEvent must not clean the restored inventory.
+            menuHolders.remove(holder);
         });
 
         player.closeInventory();
@@ -390,7 +392,8 @@ public class Menu {
                 return;
             }
 
-            Component title = StringUtils.color(holder.setPlaceholdersAndArguments(this.options.title()));
+            try {
+                Component title = StringUtils.color(holder.setPlaceholdersAndArguments(this.options.title()));
 
             Inventory inventory;
 
@@ -473,6 +476,11 @@ public class Menu {
             Bukkit.getPluginManager().callEvent(openEvent);
         }
       });
+            } catch (RuntimeException exception) {
+                holder.restorePlayerInventorySlots();
+                plugin.getLogger().log(Level.SEVERE, "Failed to render protected menu "
+                        + this.options.name() + " for " + viewer.getName(), exception);
+            }
     });
   }
 
