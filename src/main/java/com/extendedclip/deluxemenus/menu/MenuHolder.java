@@ -114,15 +114,16 @@ public class MenuHolder implements InventoryHolder {
         if (this.playerInventorySnapshot == null) {
             return;
         }
-        plugin.getPlayerInventoryUiStore().restoreAndDelete(viewer, this.playerInventorySnapshot);
-        this.playerInventorySnapshot = null;
+        if (plugin.getPlayerInventoryUiStore().restoreAndDelete(viewer, this.playerInventorySnapshot)) {
+            this.playerInventorySnapshot = null;
+        }
     }
 
     public void resetPlayerInventorySlots() {
         if (this.playerInventorySnapshot == null) {
             return;
         }
-        plugin.getPlayerInventoryUiStore().restore(viewer, this.playerInventorySnapshot);
+        plugin.getPlayerInventoryUiStore().hide(viewer);
     }
 
     private ItemStack getDisplayedItem(MenuItem item) {
@@ -189,6 +190,10 @@ public class MenuHolder implements InventoryHolder {
         // View requirements can resolve PlaceholderAPI values against the current viewer.
         // Keep evaluation on the primary thread because expansions may read Bukkit/plugin player state.
         Bukkit.getScheduler().runTask(this.plugin, () -> {
+            if (!viewer.isOnline() || Menu.getMenuHolder(viewer).orElse(null) != this) {
+                setUpdating(false);
+                return;
+            }
 
             final Set<MenuItem> active = new HashSet<>();
 
@@ -239,10 +244,38 @@ public class MenuHolder implements InventoryHolder {
             }
 
             Bukkit.getScheduler().runTask(plugin, () -> {
+                if (!viewer.isOnline() || Menu.getMenuHolder(viewer).orElse(null) != this) {
+                    setUpdating(false);
+                    return;
+                }
+
+                final boolean hideInventory = menu.options().hidePlayerInventory()
+                        || active.stream().anyMatch(item -> item.options().playerSlot().isPresent());
+
+                try {
+                    if (hideInventory && playerInventorySnapshot == null) {
+                        if (!plugin.getPlayerInventoryUiStore().restoreIfPresent(viewer)) {
+                            throw new java.io.IOException("Existing player inventory recovery file could not be restored");
+                        }
+                        playerInventorySnapshot = plugin.getPlayerInventoryUiStore().capture(viewer);
+                    }
+                    if (hideInventory) {
+                        resetPlayerInventorySlots();
+                    } else if (playerInventorySnapshot != null) {
+                        restorePlayerInventorySlots();
+                        if (playerInventorySnapshot != null) {
+                            throw new java.io.IOException("Player inventory restoration failed");
+                        }
+                    }
+                } catch (java.io.IOException | RuntimeException exception) {
+                    plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                            "Could not update the protected inventory for " + viewer.getName(), exception);
+                    Menu.closeMenu(plugin, viewer, true);
+                    setUpdating(false);
+                    return;
+                }
 
                 boolean update = false;
-                resetPlayerInventorySlots();
-
                 for (MenuItem item : active) {
 
                     ItemStack iStack = item.getItemStack(this);
