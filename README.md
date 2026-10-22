@@ -142,3 +142,27 @@ For a menu with `args: [npc]`, the ID goes **after** the player name. Named menu
 The `citizenshead-` material prefix is registered only if Citizens is enabled (`softdepend: [Citizens]`). It reads the NPC's saved base64 skin texture without online username lookups. The cache is keyed by NPC ID and the current texture value (bounded to 256 entries, cleared on menu reload); a changed skin appears on the next redraw. If an ID is invalid or the NPC skin is not yet available, the portrait item is an untextured head rather than somebody else's skin. Reopen/refresh once Citizens finishes loading the skin. Citizens NPC IDs are registry identifiers, not usernames or skin UUIDs.
 
 If you explicitly *want* a public command instead, you can still configure `open_command: npcprofile` plus `register_command: true` and use Citizens `/npc command add -p npcprofile <npc>`, but that exposes the menu command to players according to its permissions.
+
+### Custom fonts in titles and item text
+
+This fork accepts `<font:namespace:path>text</font>` in menu titles, item
+names and lore (and other text rendered with the shared component parser).
+Use a fully qualified, lowercase resource-pack font ID. For example,
+`assets/voxel/font/shop.json` is selected as `voxel:shop`:
+
+```yaml
+menu_title: ':offset_-8::server_shop_background::offset_-70:<font:voxel:shop>&fTokens: 100</font>'
+```
+
+The second offset is an example: it moves the cursor relative to the end of
+the background glyph and should be adjusted for your overlay. Keep background
+and offset glyphs outside the font tag. Vertical alignment is controlled by
+the font's bitmap `ascent` values; the font tag itself does not add padding.
+Players must have the resource pack containing the selected font.
+
+Legacy `&` colours, hex colours, section-symbol codes and placeholders continue
+to work. Colour/decoration state continues across font tags; `&r` resets legacy
+formatting but does not close a font scope. Font tags may nest; closing a tag
+restores its enclosing font, or `minecraft:default` outside all scopes. Unbalanced
+recognised font tags leave the text literal. This is font-tag support only, not
+a general MiniMessage parser; other tags remain literal.
