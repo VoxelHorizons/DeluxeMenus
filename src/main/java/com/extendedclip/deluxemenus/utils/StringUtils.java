@@ -66,7 +66,7 @@ public class StringUtils {
      */
     @NotNull
     public static Component color(@NotNull final String input) {
-        return SERIALIZER.deserialize(legacyColor(input));
+        return FontTags.apply(SERIALIZER.deserialize(legacyColor(input)), input);
     }
 
     /**
