@@ -192,6 +192,7 @@ public class Menu {
 
         MenuHolder holder = optionalHolder.get();
 
+        final boolean protectedInventory = holder.getPlayerInventorySnapshot() != null;
         holder.stopPlaceholderUpdate();
         holder.stopRefreshTask();
         holder.restorePlayerInventorySlots();
@@ -203,7 +204,10 @@ public class Menu {
         if (close) {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 player.closeInventory();
-                cleanInventory(plugin, player);
+                // Never remove legitimate items from an authoritative restored snapshot.
+                if (!protectedInventory) {
+                    cleanInventory(plugin, player);
+                }
             });
         }
         menuHolders.remove(holder);
@@ -211,14 +215,20 @@ public class Menu {
     }
 
     public static void closeMenuForShutdown(final @NotNull DeluxeMenus plugin, final @NotNull Player player) {
+        final boolean protectedInventory = getMenuHolder(player)
+                .map(holder -> holder.getPlayerInventorySnapshot() != null).orElse(false);
         getMenuHolder(player).ifPresent(holder -> {
             holder.stopPlaceholderUpdate();
             holder.stopRefreshTask();
             holder.restorePlayerInventorySlots();
+            // A synchronous InventoryCloseEvent must not clean the restored inventory.
+            menuHolders.remove(holder);
         });
 
         player.closeInventory();
-        cleanInventory(plugin, player);
+        if (!protectedInventory) {
+            cleanInventory(plugin, player);
+        }
     }
 
     public static void closeMenu(final @NotNull DeluxeMenus plugin, final @NotNull Player player, final boolean close) {
@@ -303,6 +313,9 @@ public class Menu {
         // View requirements may invoke PlaceholderAPI expansions that access Bukkit/plugin player state.
         // Evaluate them on the primary server thread so the current menu viewer is a safe, valid context.
         Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!viewer.isOnline()) {
+                return;
+            }
 
             if (isInMenu(viewer)) {
                 closeMenu(plugin, viewer, false);
@@ -348,32 +361,39 @@ public class Menu {
             holder.setMenuName(this.options.name());
             holder.setActiveItems(activeItems);
 
-            final Set<Integer> playerSlots = new LinkedHashSet<>();
-            for (TreeMap<Integer, MenuItem> priorityItems : items.values()) {
-                for (MenuItem configuredItem : priorityItems.values()) {
-                    configuredItem.options().playerSlot().ifPresent(playerSlots::add);
-                }
-            }
+            // Fullscreen menus opt in explicitly; menus using player_slot must always
+            // hide the rest of the player's inventory to avoid overlapping the UI.
+            final boolean hidePlayerInventory = InventoryVisibilityPolicy.shouldHide(this.options.hidePlayerInventory(),
+                    activeItems.stream().anyMatch(item -> item.options().playerSlot().isPresent()));
 
-            if (!playerSlots.isEmpty()) {
-                plugin.getPlayerInventoryUiStore().restoreIfPresent(viewer);
+            if (hidePlayerInventory) {
+                if (!plugin.getPlayerInventoryUiStore().restoreIfPresent(viewer)) {
+                    plugin.getLogger().severe("Cannot open menu " + this.options.name() + " for "
+                            + viewer.getName() + ": player inventory recovery could not be completed.");
+                    return;
+                }
                 try {
-                    holder.setPlayerInventorySnapshot(
-                            plugin.getPlayerInventoryUiStore().capture(viewer, playerSlots)
-                    );
-                } catch (java.io.IOException exception) {
-                    plugin.printStacktrace(
-                            "Could not save player inventory slots before opening menu " + this.options.name()
-                                    + " for " + viewer.getName() + ". The menu will not be opened.",
-                            exception
-                    );
+                    holder.setPlayerInventorySnapshot(plugin.getPlayerInventoryUiStore().capture(viewer));
+                    plugin.getPlayerInventoryUiStore().hide(viewer);
+                } catch (java.io.IOException | RuntimeException exception) {
+                    plugin.getLogger().log(Level.SEVERE, "Could not protect player inventory before opening "
+                            + this.options.name() + " for " + viewer.getName(), exception);
+                    holder.restorePlayerInventorySlots();
                     return;
                 }
             }
 
-            this.options.openHandler().ifPresent(h -> h.onClick(holder));
+            try {
+                this.options.openHandler().ifPresent(h -> h.onClick(holder));
+            } catch (RuntimeException exception) {
+                holder.restorePlayerInventorySlots();
+                plugin.getLogger().log(Level.SEVERE, "Failed to execute menu open actions for "
+                        + this.options.name(), exception);
+                return;
+            }
 
-            Component title = StringUtils.color(holder.setPlaceholdersAndArguments(this.options.title()));
+            try {
+                Component title = StringUtils.color(holder.setPlaceholdersAndArguments(this.options.title()));
 
             Inventory inventory;
 
@@ -423,22 +443,44 @@ public class Menu {
             final boolean updatePlaceholders = update;
 
             Bukkit.getScheduler().runTask(plugin, () -> {
-                if(options.refresh()) {
-                    holder.startRefreshTask();
+                if (!viewer.isOnline()) {
+                    holder.restorePlayerInventorySlots();
+                    return;
                 }
 
-                viewer.openInventory(inventory);
-                menuHolders.add(holder);
+                try {
+                    viewer.openInventory(inventory);
+                    // InventoryOpenEvent can be cancelled by another plugin.
+                    if (viewer.getOpenInventory().getTopInventory() != inventory) {
+                        holder.restorePlayerInventorySlots();
+                        return;
+                    }
 
-        if (updatePlaceholders) {
-          holder.startUpdatePlaceholdersTask();
-        }
-      });
+                    menuHolders.add(holder);
+                    if (options.refresh()) {
+                        holder.startRefreshTask();
+                    }
+                    if (updatePlaceholders) {
+                        holder.startUpdatePlaceholdersTask();
+                    }
+                } catch (RuntimeException exception) {
+                    holder.restorePlayerInventorySlots();
+                    plugin.getLogger().log(Level.SEVERE, "Failed to open menu "
+                            + this.options.name() + " for " + viewer.getName(), exception);
+                }
+            });
 
       Bukkit.getScheduler().runTask(plugin, () -> {
-        DeluxeMenusOpenMenuEvent openEvent = new DeluxeMenusOpenMenuEvent(viewer, holder);
-        Bukkit.getPluginManager().callEvent(openEvent);
+        if (Menu.getMenuHolder(viewer).orElse(null) == holder) {
+            DeluxeMenusOpenMenuEvent openEvent = new DeluxeMenusOpenMenuEvent(viewer, holder);
+            Bukkit.getPluginManager().callEvent(openEvent);
+        }
       });
+            } catch (RuntimeException exception) {
+                holder.restorePlayerInventorySlots();
+                plugin.getLogger().log(Level.SEVERE, "Failed to render protected menu "
+                        + this.options.name() + " for " + viewer.getName(), exception);
+            }
     });
   }
 

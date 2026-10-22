@@ -18,6 +18,7 @@ public class MenuOptions {
     private final int updateInterval;
     private final int refreshInterval;
     private final boolean refresh;
+    private final boolean hidePlayerInventory;
     private final boolean parsePlaceholdersInArguments;
     private final boolean parsePlaceholdersAfterArguments;
     private final boolean enableBypassPerm;
@@ -40,6 +41,7 @@ public class MenuOptions {
         this.updateInterval = builder.updateInterval;
         this.refreshInterval = builder.refreshInterval;
         this.refresh = builder.refresh;
+        this.hidePlayerInventory = builder.hidePlayerInventory;
         this.parsePlaceholdersInArguments = builder.parsePlaceholdersInArguments;
         this.parsePlaceholdersAfterArguments = builder.parsePlaceholdersAfterArguments;
         this.enableBypassPerm = builder.enableBypassPerm;
@@ -85,6 +87,10 @@ public class MenuOptions {
 
     public boolean refresh() {
         return this.refresh;
+    }
+
+    public boolean hidePlayerInventory() {
+        return this.hidePlayerInventory;
     }
 
     public boolean parsePlaceholdersInArguments() {
@@ -138,6 +144,7 @@ public class MenuOptions {
                 .updateInterval(this.updateInterval)
                 .refreshInterval(this.refreshInterval)
                 .refresh(this.refresh)
+                .hidePlayerInventory(this.hidePlayerInventory)
                 .parsePlaceholdersInArguments(this.parsePlaceholdersInArguments)
                 .parsePlaceholdersAfterArguments(this.parsePlaceholdersAfterArguments)
                 .enableBypassPerm(this.enableBypassPerm)
@@ -160,6 +167,7 @@ public class MenuOptions {
         private int updateInterval = 10;
         private int refreshInterval = 10;
         private boolean refresh;
+        private boolean hidePlayerInventory;
         private boolean parsePlaceholdersInArguments = false;
         private boolean parsePlaceholdersAfterArguments = false;
         private boolean enableBypassPerm = false;
@@ -211,6 +219,11 @@ public class MenuOptions {
 
         public MenuOptionsBuilder refresh(final boolean refresh) {
             this.refresh = refresh;
+            return this;
+        }
+
+        public MenuOptionsBuilder hidePlayerInventory(final boolean hidePlayerInventory) {
+            this.hidePlayerInventory = hidePlayerInventory;
             return this;
         }
 

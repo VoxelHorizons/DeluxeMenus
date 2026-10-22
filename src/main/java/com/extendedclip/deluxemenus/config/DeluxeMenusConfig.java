@@ -573,6 +573,7 @@ public class DeluxeMenusConfig {
 
         final boolean refresh = c.getBoolean(pre + "refresh", false);
         builder.refresh(refresh);
+        builder.hidePlayerInventory(c.getBoolean(pre + "hide_player_inventory", false));
 
         Map<Integer, TreeMap<Integer, MenuItem>> items = loadMenuItems(c, key, mainConfig);
 

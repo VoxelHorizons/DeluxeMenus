@@ -62,7 +62,37 @@ items:
 
 `slot` remains the DeluxeMenus logical slot used for priorities/view requirements. When `player_slot` is present, the item is rendered in that player inventory slot instead of the top menu inventory. Valid player slots are `0-35`: hotbar `0-8`, then the main player inventory `9-35`.
 
-Before any configured player slot is changed, DeluxeMenus persists the original contents to `plugins/DeluxeMenus/player-slot-recovery/`. The original slots are restored when the menu closes, changes to another DeluxeMenus menu, the player disconnects, or the plugin shuts down. Recovery files are also restored after an interrupted server session before another player-slot UI is used.
+### Fullscreen inventory protection
+
+Fullscreen resource-pack interfaces should hide ordinary inventory items (including the hotbar, armor, and offhand) while the GUI is visible. Add `hide_player_inventory: true` to the **menu root**, alongside `menu_title` and `size`:
+
+```yaml
+menu_title: ':testing_network_background:'
+size: 54
+hide_player_inventory: true
+items:
+  help:
+    material: PAPER
+    item_model: voxel:ui/help
+    slot: 53
+    player_slot: 8
+    display_name: '&eHelp'
+```
+
+This option defaults to `false` on ordinary menus. It is **automatically enabled** when an active menu item uses `player_slot`, even when the option is omitted. In fullscreen mode the plugin stores the full player inventory (36 storage/hotbar slots, armor, offhand/extra slots, carried cursor stack, and selected hotbar slot), hides all those items, then draws only the menu's own `player_slot` elements. Original items are restored on close, menu transition, logout, reload, and shutdown. Unlike the old per-slot implementation, normal hotbar items cannot overlap the fullscreen overlay.
+
+Snapshots are written to `plugins/DeluxeMenus/player-slot-recovery/<uuid>.yml` **before** inventory contents are cleared. Existing legacy per-slot recovery files continue to be recognized. If a recovery file is unreadable or cannot be restored, the plugin refuses to overwrite it and logs a server-side error. Do not manually delete recovery files while users are waiting for their original inventory to be restored.
+
+**Important:** Fullscreen inventory protection is designed for visual/menu interactions. Commands that read or alter a player's *real* inventory while it is hidden (e.g. shop purchases, item requirements, item rewards) must account for the temporarily empty inventory. Test economy/shop actions separately before enabling this mode on transaction menus.
+
+### Manual verification
+
+- Put a distinctive item in hotbar slot 0, other storage slots, armor, and offhand; open the fullscreen GUI and confirm none show through the overlay.
+- Close with Escape and confirm the exact original inventory and selected hotbar slot return.
+- Switch between two protected menus, then from a protected menu to an ordinary menu; check that nothing is lost or duplicated.
+- Verify `player_slot` buttons remain clickable after periodic menu refreshes and after a view requirement changes.
+- Test player logout/rejoin and a normal server restart with a protected GUI open; verify recovery and removal of the recovery file.
+
 
 
 ## Optional Citizens NPC skin portraits (VoxelHorizons fork)
