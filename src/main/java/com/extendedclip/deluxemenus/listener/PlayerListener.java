@@ -3,6 +3,7 @@ package com.extendedclip.deluxemenus.listener;
 import com.extendedclip.deluxemenus.DeluxeMenus;
 import com.extendedclip.deluxemenus.action.ClickHandler;
 import com.extendedclip.deluxemenus.menu.Menu;
+import com.extendedclip.deluxemenus.menu.MenuClickDispatcher;
 import com.extendedclip.deluxemenus.menu.MenuHolder;
 import com.extendedclip.deluxemenus.menu.MenuItem;
 import com.extendedclip.deluxemenus.menu.command.RegistrableMenuCommand;
@@ -232,26 +233,7 @@ public class PlayerListener extends Listener {
      * @return true if click was handled successfully. will ever return false if no click handler was found
      */
     private boolean handleClick(final @NotNull Player player, final @NotNull MenuHolder holder, final @NotNull Optional<ClickHandler> handler, final @NotNull Optional<RequirementList> requirements) {
-        if (handler.isEmpty()) {
-            return false;
-        }
-
-        if (requirements.isPresent()) {
-            final ClickHandler denyHandler = requirements.get().getDenyHandler();
-
-            if (!requirements.get().evaluate(holder)) {
-                if (denyHandler == null) {
-                    return true;
-                }
-
-                denyHandler.onClick(holder);
-                return true;
-            }
-        }
-
-        this.cache.put(player.getUniqueId(), System.currentTimeMillis());
-        handler.get().onClick(holder);
-
-        return true;
+        return MenuClickDispatcher.dispatch(holder, handler, requirements,
+                () -> this.cache.put(player.getUniqueId(), System.currentTimeMillis()));
     }
 }

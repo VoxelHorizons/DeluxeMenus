@@ -574,6 +574,7 @@ public class DeluxeMenusConfig {
         final boolean refresh = c.getBoolean(pre + "refresh", false);
         builder.refresh(refresh);
         builder.hidePlayerInventory(c.getBoolean(pre + "hide_player_inventory", false));
+        builder.bedrockForm(c.getBoolean(pre + "bedrock_form", true));
 
         Map<Integer, TreeMap<Integer, MenuItem>> items = loadMenuItems(c, key, mainConfig);
 

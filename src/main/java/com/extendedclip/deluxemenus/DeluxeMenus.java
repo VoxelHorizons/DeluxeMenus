@@ -56,6 +56,8 @@ public class DeluxeMenus extends JavaPlugin {
     private Map<String, ItemHook> itemHooks;
 
     private final GeneralConfig generalConfig = new GeneralConfig(this);
+    private final com.extendedclip.deluxemenus.bedrock.BedrockMenuForms bedrockMenuForms =
+            new com.extendedclip.deluxemenus.bedrock.BedrockMenuForms(this);
     private DeluxeMenusConfig menuConfig;
 
     @Override
@@ -89,6 +91,8 @@ public class DeluxeMenus extends JavaPlugin {
         }
 
         new PlayerListener(this).register();
+        // Floodgate/Geyser may enable after us; detect once the server has finished loading plugins.
+        Bukkit.getScheduler().runTask(this, () -> bedrockMenuForms.load(generalConfig.bedrockForms()));
         registerMainCommand();
         new Expansion(this).register();
 
@@ -199,6 +203,11 @@ public class DeluxeMenus extends JavaPlugin {
 
     public void reload() {
         this.generalConfig.reload();
+        this.bedrockMenuForms.load(this.generalConfig.bedrockForms());
+    }
+
+    public com.extendedclip.deluxemenus.bedrock.BedrockMenuForms getBedrockMenuForms() {
+        return bedrockMenuForms;
     }
 
     public GeneralConfig getGeneralConfig() {

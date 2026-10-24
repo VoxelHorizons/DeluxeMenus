@@ -62,6 +62,31 @@ items:
 
 `slot` remains the DeluxeMenus logical slot used for priorities/view requirements. When `player_slot` is present, the item is rendered in that player inventory slot instead of the top menu inventory. Valid player slots are `0-35`: hotbar `0-8`, then the main player inventory `9-35`.
 
+### Bedrock (Geyser/Floodgate) form frontend
+
+Java chest menus that rely on bitmap-font titles, negative-space glyphs or `item_model`
+overlays cannot render on Bedrock. When Floodgate (preferred, works behind a proxy) or a
+local Geyser-Spigot is enabled, **Bedrock players receive a native form instead of the
+chest GUI**; Java players are unaffected.
+
+- The form is built from the same menu holder, so open requirements, argument
+  requirements, `/dm open <menu> <args>` arguments, `p:<player>` placeholder targets and
+  view requirements apply exactly as for Java.
+- Every item with any click handler becomes a button (sorted by slot). Pressing it runs the
+  item's `click_commands`, falling back to left, right, middle, shift-left, shift-right, behind
+  the matching click requirements and deny commands.
+- Items without click handlers (e.g. profile statistics) are shown as readable text above
+  the buttons, including their full lore.
+- Colour codes are kept; private-use glyphs (U+E000–U+F8FF and supplementary private use)
+  and hex colours are removed. Unnamed items use their material name.
+- After a press the form is shown again with the refreshed menu state, unless the actions
+  closed the menu or opened another one. Closing the form closes the menu.
+- Player inventories are never hidden or overwritten for Bedrock viewers; `player_slot`
+  items appear as buttons instead.
+
+Disable globally with `bedrock_forms: false` in `config.yml`, or per menu with
+`bedrock_form: false` at the menu root (Bedrock players then get the Java chest menu).
+
 ### Fullscreen inventory protection
 
 Fullscreen resource-pack interfaces should hide ordinary inventory items (including the hotbar, armor, and offhand) while the GUI is visible. Add `hide_player_inventory: true` to the **menu root**, alongside `menu_title` and `size`:

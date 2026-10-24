@@ -19,6 +19,7 @@ public class MenuOptions {
     private final int refreshInterval;
     private final boolean refresh;
     private final boolean hidePlayerInventory;
+    private final boolean bedrockForm;
     private final boolean parsePlaceholdersInArguments;
     private final boolean parsePlaceholdersAfterArguments;
     private final boolean enableBypassPerm;
@@ -42,6 +43,7 @@ public class MenuOptions {
         this.refreshInterval = builder.refreshInterval;
         this.refresh = builder.refresh;
         this.hidePlayerInventory = builder.hidePlayerInventory;
+        this.bedrockForm = builder.bedrockForm;
         this.parsePlaceholdersInArguments = builder.parsePlaceholdersInArguments;
         this.parsePlaceholdersAfterArguments = builder.parsePlaceholdersAfterArguments;
         this.enableBypassPerm = builder.enableBypassPerm;
@@ -91,6 +93,11 @@ public class MenuOptions {
 
     public boolean hidePlayerInventory() {
         return this.hidePlayerInventory;
+    }
+
+    /** False when this menu opts out of the Bedrock form frontend ({@code bedrock_form: false}). */
+    public boolean bedrockForm() {
+        return this.bedrockForm;
     }
 
     public boolean parsePlaceholdersInArguments() {
@@ -145,6 +152,7 @@ public class MenuOptions {
                 .refreshInterval(this.refreshInterval)
                 .refresh(this.refresh)
                 .hidePlayerInventory(this.hidePlayerInventory)
+                .bedrockForm(this.bedrockForm)
                 .parsePlaceholdersInArguments(this.parsePlaceholdersInArguments)
                 .parsePlaceholdersAfterArguments(this.parsePlaceholdersAfterArguments)
                 .enableBypassPerm(this.enableBypassPerm)
@@ -168,6 +176,7 @@ public class MenuOptions {
         private int refreshInterval = 10;
         private boolean refresh;
         private boolean hidePlayerInventory;
+        private boolean bedrockForm = true;
         private boolean parsePlaceholdersInArguments = false;
         private boolean parsePlaceholdersAfterArguments = false;
         private boolean enableBypassPerm = false;
@@ -224,6 +233,11 @@ public class MenuOptions {
 
         public MenuOptionsBuilder hidePlayerInventory(final boolean hidePlayerInventory) {
             this.hidePlayerInventory = hidePlayerInventory;
+            return this;
+        }
+
+        public MenuOptionsBuilder bedrockForm(final boolean bedrockForm) {
+            this.bedrockForm = bedrockForm;
             return this;
         }
 

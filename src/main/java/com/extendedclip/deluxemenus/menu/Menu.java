@@ -361,9 +361,13 @@ public class Menu {
             holder.setMenuName(this.options.name());
             holder.setActiveItems(activeItems);
 
+            // Bedrock viewers get a native form built from this same holder; their real
+            // inventory is never hidden or overwritten with menu items.
+            final boolean bedrockForm = plugin.getBedrockMenuForms().routes(viewer, this.options);
+
             // Fullscreen menus opt in explicitly; menus using player_slot must always
             // hide the rest of the player's inventory to avoid overlapping the UI.
-            final boolean hidePlayerInventory = InventoryVisibilityPolicy.shouldHide(this.options.hidePlayerInventory(),
+            final boolean hidePlayerInventory = !bedrockForm && InventoryVisibilityPolicy.shouldHide(this.options.hidePlayerInventory(),
                     activeItems.stream().anyMatch(item -> item.options().playerSlot().isPresent()));
 
             if (hidePlayerInventory) {
@@ -434,7 +438,9 @@ public class Menu {
                 }
 
                 if (item.options().playerSlot().isPresent()) {
-                    viewer.getInventory().setItem(item.options().playerSlot().get(), iStack);
+                    if (!bedrockForm) {
+                        viewer.getInventory().setItem(item.options().playerSlot().get(), iStack);
+                    }
                 } else {
                     inventory.setItem(item.options().slot(), iStack);
                 }
@@ -445,6 +451,17 @@ public class Menu {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (!viewer.isOnline()) {
                     holder.restorePlayerInventorySlots();
+                    return;
+                }
+
+                if (bedrockForm) {
+                    if (isInMenu(viewer)) {
+                        closeMenu(plugin, viewer, false);
+                    }
+                    menuHolders.add(holder);
+                    // No refresh/placeholder tasks: a sent form cannot be updated in place;
+                    // it is rebuilt from the holder after each button press.
+                    plugin.getBedrockMenuForms().show(holder);
                     return;
                 }
 
