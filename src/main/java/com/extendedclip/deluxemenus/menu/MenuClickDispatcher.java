@@ -57,6 +57,36 @@ public final class MenuClickDispatcher {
                 || dispatch(holder, options.shiftRightClickHandler(), options.shiftRightClickRequirements(), beforeRun);
     }
 
+    /** A Java click type an item reacts to, with its handler and requirements. */
+    public record ClickOption(@NotNull String label, @NotNull Optional<ClickHandler> handler,
+                              @NotNull Optional<RequirementList> requirements) {
+    }
+
+    /**
+     * The distinct click actions a Bedrock player must be able to choose. Mirrors the Java
+     * listener: a generic {@code click_commands} handler runs for every click type, so it is
+     * the only option when present; otherwise each specific handler is offered.
+     */
+    public static @NotNull java.util.List<ClickOption> clickOptions(final @NotNull MenuItem item) {
+        final var options = item.options();
+        final java.util.List<ClickOption> out = new java.util.ArrayList<>();
+        if (options.clickHandler().isPresent()) {
+            out.add(new ClickOption("Select", options.clickHandler(), options.clickRequirements()));
+            return out;
+        }
+        add(out, "Left click", options.leftClickHandler(), options.leftClickRequirements());
+        add(out, "Right click", options.rightClickHandler(), options.rightClickRequirements());
+        add(out, "Shift + left click", options.shiftLeftClickHandler(), options.shiftLeftClickRequirements());
+        add(out, "Shift + right click", options.shiftRightClickHandler(), options.shiftRightClickRequirements());
+        add(out, "Middle click", options.middleClickHandler(), options.middleClickRequirements());
+        return out;
+    }
+
+    private static void add(final java.util.List<ClickOption> out, final String label,
+                            final Optional<ClickHandler> handler, final Optional<RequirementList> requirements) {
+        if (handler.isPresent()) out.add(new ClickOption(label, handler, requirements));
+    }
+
     public static boolean hasAnyHandler(final @NotNull MenuItem item) {
         final var options = item.options();
         return options.clickHandler().isPresent() || options.leftClickHandler().isPresent()

@@ -114,7 +114,34 @@ public final class BedrockMenuForms {
             show(holder);
             return;
         }
-        MenuClickDispatcher.dispatchPrimary(holder, buttonItems.get(index), () -> { });
+        final MenuItem item = buttonItems.get(index);
+        final List<MenuClickDispatcher.ClickOption> choices = MenuClickDispatcher.clickOptions(item);
+        if (choices.size() <= 1) {
+            MenuClickDispatcher.dispatchPrimary(holder, item, () -> { });
+            reshowLater(holder);
+            return;
+        }
+        // Distinct left/right/shift actions (e.g. buy one vs. buy a stack): let the player pick.
+        final BedrockFormBridge current = bridge;
+        final List<BedrockFormBridge.Button> buttons = new ArrayList<>();
+        for (final MenuClickDispatcher.ClickOption choice : choices) {
+            buttons.add(new BedrockFormBridge.Button(choice.label(), null, null));
+        }
+        final ItemStack stack = item.getItemStack(holder);
+        final String name = stack == null ? "" : BedrockFormText.sanitize(displayName(stack));
+        final String title = BedrockFormText.isBlank(name) ? holder.getMenuName() : name;
+        final boolean sent = current != null && current.send(viewer, title, "", buttons, choice -> {
+                    if (Menu.getMenuHolder(viewer).orElse(null) != holder) return;
+                    if (choice >= 0 && choice < choices.size()) {
+                        final MenuClickDispatcher.ClickOption option = choices.get(choice);
+                        MenuClickDispatcher.dispatch(holder, option.handler(), option.requirements(), () -> { });
+                    }
+                    reshowLater(holder);
+                }, () -> show(holder));
+        if (!sent) show(holder);
+    }
+
+    private void reshowLater(final MenuHolder holder) {
         // Like a Java menu that stays open after a click: re-present unless the actions
         // closed this menu or opened another one. Two ticks let [refresh] settle.
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> show(holder), 2L);

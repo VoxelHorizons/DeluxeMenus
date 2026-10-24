@@ -75,6 +75,9 @@ chest GUI**; Java players are unaffected.
 - Every item with any click handler becomes a button (sorted by slot). Pressing it runs the
   item's `click_commands`, falling back to left, right, middle, shift-left, shift-right, behind
   the matching click requirements and deny commands.
+- An item without `click_commands` but with several distinct click handlers (e.g. left =
+  buy one, shift-left = buy a stack) opens a second form listing those click types, so no
+  Java action is lost; each runs behind its own click requirements.
 - Items without click handlers (e.g. profile statistics) are shown as readable text above
   the buttons, including their full lore.
 - Colour codes are kept; private-use glyphs (U+E000–U+F8FF and supplementary private use)
