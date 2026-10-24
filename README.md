@@ -84,6 +84,11 @@ chest GUI**; Java players are unaffected.
 - Player inventories are never hidden or overwritten for Bedrock viewers; `player_slot`
   items appear as buttons instead.
 
+- `bedrock_image` on an item adds a button image: an `https://` URL (placeholders and
+  arguments are applied, e.g. `https://mc-heads.net/avatar/%player_name%` for a profile
+  portrait) or a relative resource-pack texture path such as `textures/ui/voxel/shop`
+  (no `..`, absolute paths or schemes).
+
 Disable globally with `bedrock_forms: false` in `config.yml`, or per menu with
 `bedrock_form: false` at the menu root (Bedrock players then get the Java chest menu).
 

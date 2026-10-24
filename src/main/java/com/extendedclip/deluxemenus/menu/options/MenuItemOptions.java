@@ -42,6 +42,7 @@ public class MenuItemOptions {
     private final String rarity;
     private final String tooltipStyle;
     private final String itemModel;
+    private final String bedrockImage;
 
     private final Map<Enchantment, Integer> enchantments;
     private final List<PotionEffect> potionEffects;
@@ -106,6 +107,7 @@ public class MenuItemOptions {
         this.rarity = builder.rarity;
         this.tooltipStyle = builder.tooltipStyle;
         this.itemModel = builder.itemModel;
+        this.bedrockImage = builder.bedrockImage;
         this.enchantments = builder.enchantments;
         this.potionEffects = builder.potionEffects;
         this.bannerMeta = builder.bannerMeta;
@@ -222,6 +224,11 @@ public class MenuItemOptions {
 
     public @NotNull Optional<String> itemModel() {
         return Optional.ofNullable(itemModel);
+    }
+
+    /** Bedrock form button image: an http(s) URL or a resource-pack texture path. */
+    public @NotNull Optional<String> bedrockImage() {
+        return Optional.ofNullable(bedrockImage);
     }
 
     public @NotNull Map<Enchantment, Integer> enchantments() {
@@ -383,6 +390,7 @@ public class MenuItemOptions {
                 .rarity(this.rarity)
                 .tooltipStyle(this.tooltipStyle)
                 .itemModel(this.itemModel)
+                .bedrockImage(this.bedrockImage)
                 .enchantments(this.enchantments)
                 .potionEffects(this.potionEffects)
                 .bannerMeta(this.bannerMeta)
@@ -438,6 +446,7 @@ public class MenuItemOptions {
         private String rarity;
         private String tooltipStyle;
         private String itemModel;
+        private String bedrockImage;
 
         private Map<Enchantment, Integer> enchantments = Collections.emptyMap();
         private List<PotionEffect> potionEffects = Collections.emptyList();
@@ -574,6 +583,11 @@ public class MenuItemOptions {
 
         public MenuItemOptionsBuilder tooltipStyle(final @Nullable String tooltipStyle) {
             this.tooltipStyle = tooltipStyle;
+            return this;
+        }
+
+        public MenuItemOptionsBuilder bedrockImage(final @Nullable String bedrockImage) {
+            this.bedrockImage = bedrockImage;
             return this;
         }
 

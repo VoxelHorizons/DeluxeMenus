@@ -62,7 +62,7 @@ public final class BedrockMenuForms {
                 .thenComparingInt(item -> item.options().playerSlot().orElse(item.options().slot())));
 
         final List<MenuItem> buttonItems = new ArrayList<>();
-        final List<String> buttons = new ArrayList<>();
+        final List<BedrockFormBridge.Button> buttons = new ArrayList<>();
         final StringBuilder content = new StringBuilder();
         for (final MenuItem item : items) {
             final ItemStack stack;
@@ -77,9 +77,14 @@ public final class BedrockMenuForms {
             final List<String> lore = lore(stack);
             if (MenuClickDispatcher.hasAnyHandler(item)) {
                 buttonItems.add(item);
-                buttons.add(BedrockFormText.isBlank(BedrockFormText.sanitize(name))
+                final String label = BedrockFormText.isBlank(BedrockFormText.sanitize(name))
                         ? BedrockFormText.materialName(stack.getType().name())
-                        : BedrockFormText.buttonLabel(name, lore, MAX_LORE_LINES));
+                        : BedrockFormText.buttonLabel(name, lore, MAX_LORE_LINES);
+                // Placeholders/arguments allow per-viewer avatars, e.g. a head-render URL with %player_name%.
+                final String image = item.options().bedrockImage()
+                        .map(holder::setPlaceholdersAndArguments).map(String::trim).orElse(null);
+                final String imageType = BedrockFormText.imageType(image);
+                buttons.add(new BedrockFormBridge.Button(label, imageType, imageType == null ? null : image));
             } else if (!BedrockFormText.isBlank(BedrockFormText.sanitize(name))) {
                 // Display-only items (e.g. profile statistics) become readable content lines.
                 content.append(BedrockFormText.buttonLabel(name, lore, Integer.MAX_VALUE)).append("\n\n");

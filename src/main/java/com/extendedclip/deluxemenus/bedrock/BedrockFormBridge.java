@@ -21,6 +21,10 @@ import java.util.logging.Level;
  * sendForm(UUID, Form), Cumulus SimpleForm.builder()…validResultHandler/closedOrInvalidResultHandler.
  */
 public final class BedrockFormBridge {
+    /** One form button; {@code imageType} is "URL", "PATH" or null. */
+    public record Button(@NotNull String text, @Nullable String imageType, @Nullable String image) {
+    }
+
     private final Plugin plugin;
     private final Object api;
     private final Method isBedrock;
@@ -67,6 +71,11 @@ public final class BedrockFormBridge {
         }
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Object imageType(final Class<?> type, final String name) {
+        return Enum.valueOf((Class) type, name);
+    }
+
     public boolean isBedrock(final @NotNull Player player) {
         try {
             return Boolean.TRUE.equals(isBedrock.invoke(api, player.getUniqueId()));
@@ -81,7 +90,7 @@ public final class BedrockFormBridge {
      * @return false when the form could not be built or sent
      */
     public boolean send(final @NotNull Player player, final @NotNull String title, final @NotNull String content,
-                        final @NotNull List<String> buttons, final @NotNull IntConsumer onButton,
+                        final @NotNull List<Button> buttons, final @NotNull IntConsumer onButton,
                         final @NotNull Runnable onClosed) {
         try {
             final Class<?> simpleForm = Class.forName("org.geysermc.cumulus.form.SimpleForm", true, loader);
@@ -92,7 +101,15 @@ public final class BedrockFormBridge {
             builderType.getMethod("title", String.class).invoke(builder, title);
             builderType.getMethod("content", String.class).invoke(builder, content);
             final Method button = builderType.getMethod("button", String.class);
-            for (final String text : buttons) button.invoke(builder, text);
+            final Class<?> imageTypeClass = Class.forName("org.geysermc.cumulus.util.FormImage$Type", true, loader);
+            final Method imageButton = builderType.getMethod("button", String.class, imageTypeClass, String.class);
+            for (final Button entry : buttons) {
+                if (entry.imageType() != null && entry.image() != null) {
+                    imageButton.invoke(builder, entry.text(), imageType(imageTypeClass, entry.imageType()), entry.image());
+                } else {
+                    button.invoke(builder, entry.text());
+                }
+            }
             final Consumer<Object> valid = response -> {
                 final int id;
                 try {

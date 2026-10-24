@@ -33,4 +33,15 @@ class BedrockFormTextTest {
         assertEquals("Diamond Sword", BedrockFormText.materialName("DIAMOND_SWORD"));
         assertEquals("Stone", BedrockFormText.materialName("STONE"));
     }
+
+    @Test
+    void imageTypeAcceptsUrlsAndRelativePackPathsOnly() {
+        assertEquals("URL", BedrockFormText.imageType("https://mc-heads.net/avatar/Steve"));
+        assertEquals("PATH", BedrockFormText.imageType(" textures/ui/voxel/profile "));
+        assertNull(BedrockFormText.imageType("../secret"));
+        assertNull(BedrockFormText.imageType("/abs/path"));
+        assertNull(BedrockFormText.imageType("file:///etc/passwd"));
+        assertNull(BedrockFormText.imageType(""));
+        assertNull(BedrockFormText.imageType(null));
+    }
 }

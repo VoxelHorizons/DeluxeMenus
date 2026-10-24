@@ -60,6 +60,20 @@ public final class BedrockFormText {
         return out.toString();
     }
 
+    /**
+     * Cumulus image type for a configured image: {@code URL} for http(s), {@code PATH} for a
+     * relative resource-pack texture path (e.g. {@code textures/ui/avatar}), null if unusable.
+     */
+    public static @org.jetbrains.annotations.Nullable String imageType(final @org.jetbrains.annotations.Nullable String image) {
+        if (image == null) return null;
+        final String value = image.trim();
+        if (value.isEmpty()) return null;
+        final String lower = value.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("https://") || lower.startsWith("http://")) return "URL";
+        if (value.contains("..") || value.startsWith("/") || value.contains(":") || value.contains("\\")) return null;
+        return "PATH";
+    }
+
     private static boolean isPrivateUse(final int codePoint) {
         return (codePoint >= 0xE000 && codePoint <= 0xF8FF)
                 || (codePoint >= 0xF0000 && codePoint <= 0xFFFFD)

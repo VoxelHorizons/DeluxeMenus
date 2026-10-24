@@ -676,7 +676,8 @@ public class DeluxeMenusConfig {
                     .enchantmentGlintOverride(c.getString(currentPath + "enchantment_glint_override", null))
                     .rarity(c.getString(currentPath + "rarity", null))
                     .tooltipStyle(c.getString(currentPath + "tooltip_style", null))
-                    .itemModel(c.getString(currentPath + "item_model", null));
+                    .itemModel(c.getString(currentPath + "item_model", null))
+                    .bedrockImage(c.getString(currentPath + "bedrock_image", null));
 
             if (c.contains(currentPath + "model_data_component") && c.isConfigurationSection(currentPath + "model_data_component")) {
                 final ConfigurationSection modelDataComponent = c.getConfigurationSection(currentPath + "model_data_component");
