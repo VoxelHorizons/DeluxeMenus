@@ -96,6 +96,17 @@ public class StringUtils {
         return component == null ? "" : SERIALIZER.serialize(component);
     }
 
+    /**
+     * Replaces the actual menu viewer's identity, independently of any player used
+     * to evaluate PlaceholderAPI placeholders (such as /profile <player> or -p:).
+     * These are trusted menu tokens, not PlaceholderAPI expansions.
+     */
+    @NotNull
+    public static String replaceViewerTokens(@NotNull final String input, @NotNull final Player viewer) {
+        return input.replace("{viewer_uuid}", viewer.getUniqueId().toString())
+                .replace("{viewer_name}", viewer.getName());
+    }
+
     @NotNull
     public static String replacePlaceholdersAndArguments(@NotNull String input, final @Nullable Map<String, String> arguments,
                                                          final @Nullable Player player,
