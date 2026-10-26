@@ -164,8 +164,12 @@ public class MenuHolder implements InventoryHolder {
     public @NotNull String setArguments(final @NotNull String string) {
         final Player player = this.placeholderPlayer != null ? this.placeholderPlayer : this.getViewer();
 
+        // A named <player> argument can change the PlaceholderAPI target.
+        // Keep the identity of the person actually opening the menu accessible
+        // to requirements and rendered items regardless of that target.
+        final String withViewer = StringUtils.replaceViewerTokens(string, this.viewer);
         return StringUtils.replaceArguments(
-                string,
+                withViewer,
                 this.typedArgs,
                 player,
                 this.parsePlaceholdersInArguments
