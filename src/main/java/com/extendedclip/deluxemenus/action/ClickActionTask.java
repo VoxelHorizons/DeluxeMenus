@@ -59,7 +59,7 @@ public class ClickActionTask extends BukkitRunnable {
 
 
         final String executable = StringUtils.replacePlaceholdersAndArguments(
-                this.exec,
+                StringUtils.replaceViewerTokens(this.exec, player),
                 this.arguments,
                 target,
                 this.parsePlaceholdersInArguments,
