@@ -42,6 +42,45 @@ If you would like to contribute towards DeluxeMenus should you take a look at ou
 
 
 
+## Target-player profile requirements: viewer vs target
+
+In a registered command such as `open_command: profile <player>`, the target player may
+be used as the PlaceholderAPI context. Therefore `%player_uuid%` can refer to the
+**target** rather than the person opening the menu. Comparing `%player_uuid%`
+against a target's UUID can incorrectly identify another player as yourself.
+
+This fork provides two trusted menu tokens that always refer to the **actual viewer**:
+
+- `{viewer_uuid}`: UUID of the player opening the menu.
+- `{viewer_name}`: username of the player opening the menu.
+
+These tokens work in menu text and requirements, and also in scheduled menu
+actions (including deny commands). Unlike `%player_uuid%`, they are resolved by
+DeluxeMenus independently of the PlaceholderAPI target and are not PlaceholderAPI
+expansions. They do not change the target-player context used by the rest of a menu.
+
+Example: only redirect when the requested profile belongs to the viewer:
+
+```yaml
+open_command: profile <player>
+register_command: true
+parse_placeholders_after_arguments: true
+open_requirement:
+  requirements:
+    player_self:
+      type: '!string equals'
+      input: '{viewer_uuid}'
+      output: '%parseother_unsafe_{{player}}_{player_uuid}%'
+      deny_commands:
+        - '[openguimenu] Player-Profile'
+```
+
+Keep `{{player}}` in the target's parseother placeholder: the argument
+substitution produces `{TargetName}` as expected by the expansion. If the
+player UUIDs differ, this requirement succeeds and the other player's profile
+opens. If they match, the deny command opens the viewer's own profile.
+
+
 ## Player inventory UI slots
 
 This fork supports rendering a menu item in the player's visible inventory area while a DeluxeMenus menu is open.
