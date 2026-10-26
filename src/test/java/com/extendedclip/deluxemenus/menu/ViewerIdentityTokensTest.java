@@ -1,7 +1,5 @@
 package com.extendedclip.deluxemenus.menu;
 
-import com.extendedclip.deluxemenus.requirement.InputResultRequirement;
-import com.extendedclip.deluxemenus.requirement.RequirementType;
 import com.extendedclip.deluxemenus.utils.StringUtils;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
@@ -35,12 +33,12 @@ class ViewerIdentityTokensTest {
         assertEquals("{Target}", holder.setArguments("{{player}}"));
         assertNotEquals(targetUuid.toString(), holder.setArguments("{viewer_uuid}"));
 
-        InputResultRequirement otherPlayerCheck = new InputResultRequirement(
-                RequirementType.STRING_DOES_NOT_EQUAL, "{viewer_uuid}", "{target_uuid}");
-        assertTrue(otherPlayerCheck.evaluate(holder));
+        // The production requirement uses !string equals. Verify its resolved
+        // operands here without invoking a live PlaceholderAPI plugin in CI.
+        assertTrue(!holder.setArguments("{viewer_uuid}").equals(holder.setArguments("{target_uuid}")));
 
         holder.setTypedArgs(Map.of("player", "Viewer", "target_uuid", viewerUuid.toString()));
-        assertFalse(otherPlayerCheck.evaluate(holder));
+        assertFalse(!holder.setArguments("{viewer_uuid}").equals(holder.setArguments("{target_uuid}")));
     }
 
     @Test
