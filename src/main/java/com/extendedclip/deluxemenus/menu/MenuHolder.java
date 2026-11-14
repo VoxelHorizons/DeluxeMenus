@@ -326,8 +326,8 @@ public class MenuHolder implements InventoryHolder {
     private void refreshTitle(final @NotNull Menu menu) {
         // Re-evaluate the same title expression used when opening, including
         // PlaceholderAPI, named menu arguments and <font:...> tags.
-        final Component newTitle = StringUtils.color(
-                setPlaceholdersAndArguments(menu.options().title()));
+        final Component newTitle = MenuTitlePlaceholderResolver.resolve(StringUtils.color(
+                setPlaceholdersAndArguments(menu.options().title())), plugin);
         if (!InventoryTitleUpdater.hasChanged(renderedTitle, newTitle)) {
             return;
         }
