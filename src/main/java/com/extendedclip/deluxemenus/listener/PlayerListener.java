@@ -97,7 +97,11 @@ public class PlayerListener extends Listener {
             }
 
             final boolean protectedInventory = holder.getPlayerInventorySnapshot() != null;
-            Menu.closeMenu(plugin, player, false);
+            // A player can close an inventory with Escape without invoking the
+            // DeluxeMenus [close] action. Execute close_commands for that path,
+            // too. The [close] action already removes the tracked holder before
+            // its scheduled InventoryCloseEvent, so the handler runs only once.
+            Menu.closeMenu(plugin, player, false, true);
             // Cleanup only applies to legacy menus. Protected inventories were
             // restored from disk and must never be filtered by menu-item markers.
             if (!protectedInventory) {
