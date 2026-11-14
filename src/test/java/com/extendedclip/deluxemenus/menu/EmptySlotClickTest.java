@@ -6,17 +6,13 @@ import org.junit.jupiter.api.Test;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+
 
 class EmptySlotClickTest {
 
     @Test
     void airItemIsClickableWithoutDisplayedItemStack() {
-        MenuItem item = mock(MenuItem.class);
-        MenuItemOptions options = mock(MenuItemOptions.class);
-        when(item.options()).thenReturn(options);
-        when(options.slot()).thenReturn(8);
-        when(options.playerSlot()).thenReturn(java.util.Optional.empty());
+        MenuItem item = new MenuItem(null, MenuItemOptions.builder().material("AIR").slot(8).build());
         MenuHolder holder = new MenuHolder(null, null);
         holder.setActiveItems(Set.of(item));
 
@@ -26,11 +22,7 @@ class EmptySlotClickTest {
 
     @Test
     void outsideAndBottomInventoryDoNotTriggerTopSlot() {
-        MenuItem item = mock(MenuItem.class);
-        MenuItemOptions options = mock(MenuItemOptions.class);
-        when(item.options()).thenReturn(options);
-        when(options.slot()).thenReturn(8);
-        when(options.playerSlot()).thenReturn(java.util.Optional.empty());
+        MenuItem item = new MenuItem(null, MenuItemOptions.builder().material("AIR").slot(8).build());
         MenuHolder holder = new MenuHolder(null, null);
         holder.setActiveItems(Set.of(item));
 
@@ -41,10 +33,7 @@ class EmptySlotClickTest {
 
     @Test
     void playerSlotTargetRemainsSupported() {
-        MenuItem item = mock(MenuItem.class);
-        MenuItemOptions options = mock(MenuItemOptions.class);
-        when(item.options()).thenReturn(options);
-        when(options.playerSlot()).thenReturn(java.util.Optional.of(4));
+        MenuItem item = new MenuItem(null, MenuItemOptions.builder().material("AIR").slot(8).playerSlot(4).build());
         MenuHolder holder = new MenuHolder(null, null);
         holder.setActiveItems(Set.of(item));
 
