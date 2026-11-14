@@ -95,6 +95,19 @@ public class MenuHolder implements InventoryHolder {
         return null;
     }
 
+    /**
+     * Resolve clicks by active slot configuration, not by the displayed ItemStack.
+     * AIR menu items occupy no visible slot but remain valid click targets.
+     * An outside click (null clicked inventory) must never trigger an action.
+     */
+    public MenuItem getClickTarget(int rawSlot, int topInventorySize,
+                                   boolean topInventory, boolean playerInventory, int playerSlot) {
+        if (topInventory) {
+            return rawSlot >= 0 && rawSlot < topInventorySize ? getItem(rawSlot) : null;
+        }
+        return playerInventory ? getPlayerItem(playerSlot) : null;
+    }
+
     public MenuItem getPlayerItem(int slot) {
         for (MenuItem item : activeItems) {
             if (item.options().playerSlot().isPresent() && item.options().playerSlot().get() == slot) {
