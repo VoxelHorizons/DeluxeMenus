@@ -165,12 +165,15 @@ public class PlayerListener extends Listener {
 
         event.setCancelled(true);
 
-        final MenuItem item;
-        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
-            item = holder.getPlayerItem(event.getSlot());
-        } else {
-            item = holder.getItem(event.getRawSlot());
-        }
+        // Resolve clicks from the active menu configuration, not the inventory's
+        // ItemStack. An AIR item is intentionally invisible but still clickable.
+        // Outside clicks must never resolve to a configured slot.
+        final MenuItem item = holder.getClickTarget(
+                event.getRawSlot(),
+                holder.getInventory().getSize(),
+                event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory()),
+                event.getSlot()
+        );
 
         if (item == null) {
             return;
