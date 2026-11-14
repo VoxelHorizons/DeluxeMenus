@@ -394,6 +394,9 @@ public class Menu {
 
             try {
                 Component title = StringUtils.color(holder.setPlaceholdersAndArguments(this.options.title()));
+                // VoxelCore resolves aliases on InventoryOpenEvent; store the
+                // equivalent resolved component for subsequent refresh comparisons.
+                holder.setRenderedTitle(MenuTitlePlaceholderResolver.resolve(title, plugin));
 
             Inventory inventory;
 
