@@ -394,6 +394,7 @@ public class Menu {
 
             try {
                 Component title = StringUtils.color(holder.setPlaceholdersAndArguments(this.options.title()));
+                holder.setRenderedTitle(title);
 
             Inventory inventory;
 
