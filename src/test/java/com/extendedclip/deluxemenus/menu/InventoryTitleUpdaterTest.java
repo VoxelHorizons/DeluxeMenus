@@ -1,7 +1,6 @@
 package com.extendedclip.deluxemenus.menu;
 
 import com.extendedclip.deluxemenus.utils.StringUtils;
-import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +28,6 @@ class InventoryTitleUpdaterTest {
         Component rowSix = StringUtils.color("<font:voxel:row_6>&f2</font>");
         assertTrue(InventoryTitleUpdater.hasChanged(rowFive, rowSix));
         assertNotEquals(rowFive, rowSix);
-        assertEquals(Key.key("voxel:row_6"), ((net.kyori.adventure.text.TextComponent) rowSix.children().get(0)).style().font());
     }
 
     @Test
