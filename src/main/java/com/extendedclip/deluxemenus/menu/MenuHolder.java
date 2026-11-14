@@ -3,6 +3,7 @@ package com.extendedclip.deluxemenus.menu;
 import com.extendedclip.deluxemenus.DeluxeMenus;
 import com.extendedclip.deluxemenus.menu.options.MenuOptions;
 import com.extendedclip.deluxemenus.utils.StringUtils;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -32,6 +33,7 @@ public class MenuHolder implements InventoryHolder {
     private BukkitTask updateTask = null;
     private BukkitTask refreshTask = null;
     private Inventory inventory;
+    private Component renderedTitle;
     private PlayerInventoryUiStore.Snapshot playerInventorySnapshot;
     private boolean updating;
     private boolean parsePlaceholdersInArguments;
@@ -139,6 +141,10 @@ public class MenuHolder implements InventoryHolder {
         } else {
             inventory.setItem(item.options().slot(), stack);
         }
+    }
+
+    public void setRenderedTitle(final @NotNull Component title) {
+        this.renderedTitle = title;
     }
 
     public Optional<Menu> getMenu() {
@@ -304,6 +310,7 @@ public class MenuHolder implements InventoryHolder {
                 }
 
                 setActiveItems(active);
+                refreshTitle(menu);
 
                 if (update && updateTask == null) {
                     startUpdatePlaceholdersTask();
@@ -314,6 +321,20 @@ public class MenuHolder implements InventoryHolder {
                 setUpdating(false);
             });
         });
+    }
+
+    private void refreshTitle(final @NotNull Menu menu) {
+        // Re-evaluate the same title expression used when opening, including
+        // PlaceholderAPI, named menu arguments and <font:...> tags.
+        final Component newTitle = StringUtils.color(
+                setPlaceholdersAndArguments(menu.options().title()));
+        if (!InventoryTitleUpdater.hasChanged(renderedTitle, newTitle)) {
+            return;
+        }
+
+        if (InventoryTitleUpdater.update(viewer, inventory, newTitle, plugin.getLogger())) {
+            renderedTitle = newTitle;
+        }
     }
 
     public void stopPlaceholderUpdate() {
