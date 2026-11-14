@@ -171,6 +171,7 @@ public class PlayerListener extends Listener {
         final MenuItem item = holder.getClickTarget(
                 event.getRawSlot(),
                 holder.getInventory().getSize(),
+                event.getClickedInventory() != null && event.getClickedInventory().equals(holder.getInventory()),
                 event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory()),
                 event.getSlot()
         );
