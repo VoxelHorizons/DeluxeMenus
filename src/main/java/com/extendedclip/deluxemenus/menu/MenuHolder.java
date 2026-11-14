@@ -95,6 +95,21 @@ public class MenuHolder implements InventoryHolder {
         return null;
     }
 
+    /**
+     * Resolves a configured click target independently from the displayed ItemStack.
+     * AIR entries remain active and clickable even though Bukkit renders their slots empty.
+     * Returns null when the click is outside the menu's top inventory.
+     */
+    public MenuItem getClickTarget(int rawSlot, int topInventorySize, boolean playerInventory, int playerSlot) {
+        if (playerInventory) {
+            return getPlayerItem(playerSlot);
+        }
+        if (rawSlot < 0 || rawSlot >= topInventorySize) {
+            return null;
+        }
+        return getItem(rawSlot);
+    }
+
     public MenuItem getPlayerItem(int slot) {
         for (MenuItem item : activeItems) {
             if (item.options().playerSlot().isPresent() && item.options().playerSlot().get() == slot) {
